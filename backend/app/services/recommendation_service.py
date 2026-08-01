@@ -1,15 +1,13 @@
-import logging
-from typing import List, Dict, Any
-from app.database.repositories.recommendation_repo import RecommendationRepository
-
-logger = logging.getLogger(__name__)
-
+from app.database.repositories.recommendation_repository import recommendation_repository
+from app.agents.learning_curator.agent import learning_curator_agent
 
 class RecommendationService:
-    @staticmethod
-    async def get_user_recommendations(user_id: str, limit: int = 50) -> List[Dict[str, Any]]:
-        return await RecommendationRepository.get_by_user_id(user_id, limit)
+    async def get_recommendations(self, user_id: str, target_role: str = "AI Engineer") -> dict:
+        existing = await recommendation_repository.get_by_user(user_id)
+        if existing:
+            return existing
+        
+        recs = learning_curator_agent.curate(user_id, target_role)
+        return await recommendation_repository.save_recommendations(user_id, recs)
 
-    @staticmethod
-    async def create_recommendation(data: Dict[str, Any]) -> Dict[str, Any]:
-        return await RecommendationRepository.create_recommendation(data)
+recommendation_service = RecommendationService()

@@ -1,56 +1,34 @@
 import logging
-from typing import Optional
-from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
-from app.config.config import settings
+from motor.motor_asyncio import AsyncIOMotorClient
+from app.config.settings import settings
 
 logger = logging.getLogger(__name__)
 
-
 class MongoDB:
-    client: Optional[AsyncIOMotorClient] = None
-    db: Optional[AsyncIOMotorDatabase] = None
+    client: AsyncIOMotorClient | None = None
+    db = None
 
+db_instance = MongoDB()
 
-db_client = MongoDB()
+# In-memory mock storage fallback when MongoDB server is not running locally
+mock_db_storage: dict[str, list[dict]] = {}
 
-
-async def connect_to_mongo() -> AsyncIOMotorDatabase:
-    """
-    Establish singleton connection pool to MongoDB Atlas.
-    """
-    logger.info("Connecting to MongoDB Atlas...")
+async def connect_to_mongo():
     try:
-        db_client.client = AsyncIOMotorClient(
-            settings.MONGODB_URI,
-            maxPoolSize=100,
-            minPoolSize=10,
-            serverSelectionTimeoutMS=5000
-        )
-        db_client.db = db_client.client[settings.DATABASE_NAME]
-        
-        # Ping the database to verify connection
-        await db_client.client.admin.command('ping')
-        logger.info(f"Successfully connected to MongoDB Atlas database: '{settings.DATABASE_NAME}'!")
-        return db_client.db
+        db_instance.client = AsyncIOMotorClient(settings.MONGODB_URL, serverSelectionTimeoutMS=2000)
+        db_instance.db = db_instance.client[settings.MONGODB_DB_NAME]
+        # Quick ping check
+        await db_instance.client.admin.command('ping')
+        logger.info(f"Connected to MongoDB at {settings.MONGODB_URL}")
     except Exception as e:
-        logger.error(f"Failed to connect to MongoDB Atlas: {e}")
-        raise e
+        logger.warning(f"MongoDB connection failed: {e}. Falling back to in-memory store mode.")
+        db_instance.client = None
+        db_instance.db = None
 
+async def close_mongo_connection():
+    if db_instance.client:
+        db_instance.client.close()
+        logger.info("Closed MongoDB connection.")
 
-async def close_mongo_connection() -> None:
-    """
-    Close MongoDB connection pool on shutdown.
-    """
-    if db_client.client:
-        logger.info("Closing MongoDB connection...")
-        db_client.client.close()
-        logger.info("MongoDB connection closed successfully.")
-
-
-def get_database() -> AsyncIOMotorDatabase:
-    """
-    Database getter dependency. Returns singleton AsyncIOMotorDatabase instance.
-    """
-    if db_client.db is None:
-        logger.warning("get_database() called but database client is not initialized.")
-    return db_client.db
+def get_database():
+    return db_instance.db

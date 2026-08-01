@@ -1,15 +1,13 @@
-from fastapi import APIRouter, status
+from fastapi import APIRouter
+from app.config.settings import settings
+from app.utils.response import success_response
 
 router = APIRouter(prefix="/health", tags=["Health"])
 
-
-@router.get("", status_code=status.HTTP_200_OK)
-async def health_check():
-    """
-    Health check endpoint.
-    """
-    return {
+@router.get("")
+async def get_health_status():
+    return success_response({
         "status": "healthy",
-        "service": "GrowthOS Backend API",
-        "database": "MongoDB Atlas"
-    }
+        "app": settings.APP_NAME,
+        "environment": settings.ENV
+    })
