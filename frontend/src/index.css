@@ -11,8 +11,8 @@
   }
 
   .light {
-    --bg-primary: #f8fafc;
-    --bg-card: #ffffff;
+    --bg-primary: #ffffff;
+    --bg-card: #f8fafc;
     --bg-card-hover: #f1f5f9;
     --border-color: rgba(0, 0, 0, 0.08);
   }
@@ -20,6 +20,7 @@
   body {
     background-color: var(--bg-primary);
     font-family: 'Plus Jakarta Sans', sans-serif;
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
 }
 
@@ -32,8 +33,8 @@
 }
 
 .light .glass-panel {
-  background: rgba(255, 255, 255, 0.85);
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
 }
 
 .glass-card {
@@ -41,6 +42,11 @@
   backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.08);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.light .glass-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
 }
 
 .glass-card:hover {
@@ -72,9 +78,17 @@
   background: rgba(9, 10, 15, 0.8);
 }
 
+.light ::-webkit-scrollbar-track {
+  background: #ffffff;
+}
+
 ::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.15);
   border-radius: 9999px;
+}
+
+.light ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
 }
 
 ::-webkit-scrollbar-thumb:hover {

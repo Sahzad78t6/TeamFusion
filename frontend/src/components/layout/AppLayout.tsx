@@ -9,7 +9,7 @@ import { CustomCursor } from '../common/CustomCursor';
 
 export const AppLayout: React.FC = () => {
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#090a0f] text-slate-100 relative">
+    <div className="flex h-screen w-screen overflow-hidden bg-white dark:bg-[#090a0f] text-slate-900 dark:text-slate-100 relative transition-colors duration-300">
       {/* Interactive WebGL/Canvas Particle Mesh Background */}
       <ParticleCanvas />
 
@@ -23,7 +23,7 @@ export const AppLayout: React.FC = () => {
       <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative z-10">
         <Header />
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 space-y-8 bg-hero-gradient">
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 space-y-8 bg-white dark:bg-[#090a0f] dark:bg-hero-gradient transition-colors duration-300">
           <Outlet />
         </main>
       </div>

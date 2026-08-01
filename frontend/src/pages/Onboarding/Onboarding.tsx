@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Zap, ArrowRight, ArrowLeft, Check, Sparkles, Target, Compass, Clock, BookOpen } from 'lucide-react';
+import { Zap, ArrowRight, ArrowLeft, Check, Sparkles, Target, Compass, Clock, BookOpen, Sun, Moon } from 'lucide-react';
 import { Button } from '../../components/common/Button';
+import { useTheme } from '../../context/ThemeContext';
 
 export const Onboarding: React.FC = () => {
+  const { theme, toggleTheme } = useTheme();
   const [step, setStep] = useState(1);
   const navigate = useNavigate();
 
@@ -47,19 +49,29 @@ export const Onboarding: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen w-screen bg-[#090a0f] flex items-center justify-center p-4 selection:bg-purple-500 selection:text-white relative overflow-hidden">
-      <div className="absolute -top-40 left-1/3 w-[500px] h-[500px] bg-purple-600/15 rounded-full blur-[140px] pointer-events-none" />
+    <div className="min-h-screen w-screen bg-white dark:bg-[#090a0f] flex items-center justify-center p-4 selection:bg-purple-500 selection:text-white relative overflow-hidden transition-colors duration-300">
+      {/* Absolute Theme Toggle Button */}
+      <button
+        onClick={toggleTheme}
+        className="absolute top-6 right-6 p-2.5 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors z-50 shadow-sm"
+        title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} mode`}
+      >
+        {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-550 dark:text-amber-300" /> : <Moon className="w-4 h-4 text-indigo-650 dark:text-indigo-400" />}
+      </button>
 
-      <div className="w-full max-w-2xl bg-[#12141d]/90 border border-white/10 rounded-3xl p-6 md:p-10 shadow-2xl backdrop-blur-2xl space-y-8">
+      {/* Background Glow */}
+      <div className="absolute -top-40 left-1/3 w-[500px] h-[500px] bg-purple-600/10 dark:bg-purple-600/15 rounded-full blur-[140px] pointer-events-none" />
+
+      <div className="w-full max-w-2xl bg-slate-50/90 dark:bg-[#12141d]/90 border border-slate-200 dark:border-white/10 rounded-3xl p-6 md:p-10 shadow-2xl backdrop-blur-2xl space-y-8 transition-colors duration-300">
         {/* Wizard Top Bar */}
-        <div className="flex items-center justify-between border-b border-white/10 pb-6">
+        <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-6">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center shadow-lg shadow-purple-500/30">
               <Zap className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-white">GrowthOS Identity Calibration</h2>
-              <p className="text-[11px] text-slate-400">Step {step} of {totalSteps}</p>
+              <h2 className="text-sm font-bold text-slate-900 dark:text-white">GrowthOS Identity Calibration</h2>
+              <p className="text-[11px] text-slate-550 dark:text-slate-400">Step {step} of {totalSteps}</p>
             </div>
           </div>
 
@@ -73,7 +85,7 @@ export const Onboarding: React.FC = () => {
                     ? 'w-8 bg-gradient-to-r from-purple-500 to-indigo-500'
                     : s < step
                     ? 'w-3 bg-purple-500/40'
-                    : 'w-3 bg-white/10'
+                    : 'w-3 bg-slate-200 dark:bg-white/10'
                 }`}
               />
             ))}
@@ -91,11 +103,11 @@ export const Onboarding: React.FC = () => {
               className="space-y-6"
             >
               <div className="space-y-2">
-                <span className="px-2.5 py-1 text-[10px] font-extrabold bg-purple-500/20 text-purple-300 rounded-full uppercase border border-purple-500/30">
+                <span className="px-2.5 py-1 text-[10px] font-extrabold bg-purple-500/10 dark:bg-purple-500/20 text-purple-600 dark:text-purple-300 rounded-full uppercase border border-purple-300 dark:border-purple-500/30">
                   Phase 1 — Vision
                 </span>
-                <h3 className="text-xl font-bold text-white">What is your Dream Role or Career Goal?</h3>
-                <p className="text-xs text-slate-400">This forms the target state of your Identity Twin model.</p>
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white">What is your Dream Role or Career Goal?</h3>
+                <p className="text-xs text-slate-600 dark:text-slate-400">This forms the target state of your Identity Twin model.</p>
               </div>
 
               <div className="space-y-3">
@@ -111,15 +123,15 @@ export const Onboarding: React.FC = () => {
                     onClick={() => setFormData({ ...formData, dreamCareer: role })}
                     className={`w-full flex items-center justify-between p-4 rounded-xl text-xs font-semibold text-left transition-all border ${
                       formData.dreamCareer === role
-                        ? 'bg-purple-600/20 border-purple-500 text-white shadow-lg shadow-purple-500/10'
-                        : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'
+                        ? 'bg-purple-600/20 border-purple-500 text-purple-900 dark:text-white shadow-lg shadow-purple-500/10'
+                        : 'bg-white dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10'
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <Target className="w-4 h-4 text-purple-400" />
+                      <Target className="w-4 h-4 text-purple-650 dark:text-purple-400" />
                       <span>{role}</span>
                     </div>
-                    {formData.dreamCareer === role && <Check className="w-4 h-4 text-purple-400" />}
+                    {formData.dreamCareer === role && <Check className="w-4 h-4 text-purple-650 dark:text-purple-400" />}
                   </button>
                 ))}
               </div>
@@ -135,11 +147,11 @@ export const Onboarding: React.FC = () => {
               className="space-y-6"
             >
               <div className="space-y-2">
-                <span className="px-2.5 py-1 text-[10px] font-extrabold bg-indigo-500/20 text-indigo-300 rounded-full uppercase border border-indigo-500/30">
+                <span className="px-2.5 py-1 text-[10px] font-extrabold bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-650 dark:text-indigo-300 rounded-full uppercase border border-indigo-300 dark:border-indigo-500/30">
                   Phase 2 — Skill Baseline
                 </span>
-                <h3 className="text-xl font-bold text-white">Select Your Core Technical & Business Skills</h3>
-                <p className="text-xs text-slate-400">Click to add/remove your existing strengths.</p>
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white">Select Your Core Technical & Business Skills</h3>
+                <p className="text-xs text-slate-600 dark:text-slate-400">Click to add/remove your existing strengths.</p>
               </div>
 
               <div className="flex flex-wrap gap-2.5">
@@ -165,7 +177,7 @@ export const Onboarding: React.FC = () => {
                       className={`px-3.5 py-2 rounded-xl text-xs font-medium transition-all border ${
                         isSelected
                           ? 'bg-indigo-600 text-white border-indigo-400 shadow-md shadow-indigo-500/30'
-                          : 'bg-white/5 border-white/10 text-slate-400 hover:text-white hover:bg-white/10'
+                          : 'bg-white dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-450 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10'
                       }`}
                     >
                       {skill} {isSelected ? '✓' : '+'}
@@ -185,11 +197,11 @@ export const Onboarding: React.FC = () => {
               className="space-y-6"
             >
               <div className="space-y-2">
-                <span className="px-2.5 py-1 text-[10px] font-extrabold bg-cyan-500/20 text-cyan-300 rounded-full uppercase border border-cyan-500/30">
+                <span className="px-2.5 py-1 text-[10px] font-extrabold bg-cyan-500/10 dark:bg-cyan-500/20 text-cyan-600 dark:text-cyan-300 rounded-full uppercase border border-cyan-300 dark:border-cyan-500/30">
                   Phase 3 — Interests & Topics
                 </span>
-                <h3 className="text-xl font-bold text-white">What growth areas excite you most?</h3>
-                <p className="text-xs text-slate-400">Used by autonomous agents to fetch relevant papers, courses & opportunities.</p>
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white">What growth areas excite you most?</h3>
+                <p className="text-xs text-slate-600 dark:text-slate-400">Used by autonomous agents to fetch relevant papers, courses & opportunities.</p>
               </div>
 
               <div className="flex flex-wrap gap-2.5">
@@ -211,7 +223,7 @@ export const Onboarding: React.FC = () => {
                       className={`px-3.5 py-2 rounded-xl text-xs font-medium transition-all border ${
                         isSelected
                           ? 'bg-cyan-600 text-white border-cyan-400 shadow-md shadow-cyan-500/30'
-                          : 'bg-white/5 border-white/10 text-slate-400 hover:text-white hover:bg-white/10'
+                          : 'bg-white dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-450 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10'
                       }`}
                     >
                       {topic}
@@ -231,11 +243,11 @@ export const Onboarding: React.FC = () => {
               className="space-y-6"
             >
               <div className="space-y-2">
-                <span className="px-2.5 py-1 text-[10px] font-extrabold bg-emerald-500/20 text-emerald-300 rounded-full uppercase border border-emerald-500/30">
+                <span className="px-2.5 py-1 text-[10px] font-extrabold bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 rounded-full uppercase border border-emerald-300 dark:border-emerald-500/30">
                   Phase 4 — Daily Cadence
                 </span>
-                <h3 className="text-xl font-bold text-white">How much daily time can you commit to deep learning?</h3>
-                <p className="text-xs text-slate-400">Prevents ML burnout prediction triggers.</p>
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white">How much daily time can you commit to deep learning?</h3>
+                <p className="text-xs text-slate-600 dark:text-slate-400">Prevents ML burnout prediction triggers.</p>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -245,11 +257,11 @@ export const Onboarding: React.FC = () => {
                     onClick={() => setFormData({ ...formData, timeCommitment: time })}
                     className={`p-4 rounded-xl text-xs font-semibold text-center border transition-all ${
                       formData.timeCommitment === time
-                        ? 'bg-emerald-600/20 border-emerald-500 text-white shadow-lg shadow-emerald-500/20'
-                        : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10'
+                        ? 'bg-emerald-600/20 border-emerald-500 text-emerald-900 dark:text-white shadow-lg shadow-emerald-500/20'
+                        : 'bg-white dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10'
                     }`}
                   >
-                    <Clock className="w-5 h-5 mx-auto mb-2 text-emerald-400" />
+                    <Clock className="w-5 h-5 mx-auto mb-2 text-emerald-650 dark:text-emerald-400" />
                     <span>{time}</span>
                   </button>
                 ))}
@@ -259,7 +271,7 @@ export const Onboarding: React.FC = () => {
         </AnimatePresence>
 
         {/* Wizard Bottom Controls */}
-        <div className="flex items-center justify-between border-t border-white/10 pt-6">
+        <div className="flex items-center justify-between border-t border-slate-200 dark:border-white/10 pt-6">
           {step > 1 ? (
             <Button variant="ghost" size="sm" onClick={() => setStep(step - 1)} leftIcon={<ArrowLeft className="w-4 h-4" />}>
               Back

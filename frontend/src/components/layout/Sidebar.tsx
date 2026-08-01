@@ -34,10 +34,10 @@ export const Sidebar: React.FC = () => {
     <motion.aside
       animate={{ width: isCollapsed ? 80 : 260 }}
       transition={{ duration: 0.3, ease: 'easeInOut' }}
-      className="relative flex flex-col h-screen border-r border-white/10 bg-[#0c0e17]/90 backdrop-blur-xl z-30 shrink-0 select-none"
+      className="relative flex flex-col h-screen border-r border-slate-200 dark:border-white/10 bg-slate-50/90 dark:bg-[#0c0e17]/90 backdrop-blur-xl z-30 shrink-0 select-none transition-colors duration-300"
     >
       {/* Top Header / Logo */}
-      <div className="flex items-center justify-between h-16 px-4 border-b border-white/10">
+      <div className="flex items-center justify-between h-16 px-4 border-b border-slate-200 dark:border-white/10">
         <NavLink to="/dashboard" className="flex items-center gap-3 overflow-hidden">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 flex items-center justify-center shadow-lg shadow-indigo-500/30 shrink-0">
             <Zap className="w-5 h-5 text-white" />
@@ -50,10 +50,10 @@ export const Sidebar: React.FC = () => {
                 exit={{ opacity: 0, x: -10 }}
                 className="flex flex-col"
               >
-                <span className="font-extrabold text-base tracking-tight text-white flex items-center gap-1.5">
+                <span className="font-extrabold text-base tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5">
                   Growth<span className="text-gradient">OS</span>
                 </span>
-                <span className="text-[10px] font-semibold text-slate-400 tracking-wider uppercase">
+                <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 tracking-wider uppercase">
                   AI Growth Engine
                 </span>
               </motion.div>
@@ -63,7 +63,7 @@ export const Sidebar: React.FC = () => {
 
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors"
+          className="p-1.5 text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
           title={isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
         >
           {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
@@ -83,14 +83,14 @@ export const Sidebar: React.FC = () => {
               className={({ isActive }) =>
                 `group relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
                   isActive
-                    ? 'text-white bg-gradient-to-r from-indigo-600/20 via-purple-600/15 to-transparent border border-indigo-500/30 shadow-md shadow-indigo-500/10'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                    ? 'text-slate-900 dark:text-white bg-gradient-to-r from-indigo-600/20 via-purple-600/15 to-transparent border border-indigo-500/30 shadow-md shadow-indigo-500/10'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/5'
                 }`
               }
             >
               <Icon
                 className={`w-5 h-5 shrink-0 transition-transform duration-200 group-hover:scale-110 ${
-                  isActive ? 'text-indigo-400' : 'text-slate-400 group-hover:text-slate-200'
+                  isActive ? 'text-indigo-650 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-200'
                 }`}
               />
 
@@ -116,15 +116,15 @@ export const Sidebar: React.FC = () => {
         })}
       </div>
 
-      {/* User Profile Bottom Left Button (Opens Profile & Settings) */}
-      <div className="p-3 border-t border-white/10">
+      {/* User Profile Bottom Left Button */}
+      <div className="p-3 border-t border-slate-200 dark:border-white/10">
         <NavLink
           to="/profile"
           className={({ isActive }) =>
             `flex items-center gap-3 p-2 rounded-xl transition-all ${
               isActive
-                ? 'bg-purple-600/20 border border-purple-500/30 text-white shadow-md'
-                : 'hover:bg-white/5 text-slate-300'
+                ? 'bg-purple-600/20 border border-purple-500/30 text-slate-900 dark:text-white shadow-md'
+                : 'hover:bg-slate-100 dark:hover:bg-white/5 text-slate-600 dark:text-slate-300'
             } group`
           }
           title="Open Profile & Settings"
@@ -136,10 +136,10 @@ export const Sidebar: React.FC = () => {
           />
           {!isCollapsed && (
             <div className="flex flex-col min-w-0 flex-1">
-              <span className="text-xs font-bold text-white truncate group-hover:text-indigo-300 transition-colors">
+              <span className="text-xs font-bold text-slate-900 dark:text-white truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition-colors">
                 {user.name}
               </span>
-              <span className="text-[10px] text-slate-400 truncate">Lvl {user.level} • Profile & Settings</span>
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate">Lvl {user.level} • Profile & Settings</span>
             </div>
           )}
         </NavLink>
