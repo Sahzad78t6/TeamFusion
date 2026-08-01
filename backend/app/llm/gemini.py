@@ -7,21 +7,22 @@ from app.config.settings import settings
 
 logger = logging.getLogger(__name__)
 
-# Module-level imports for Gemini SDKs
-genai_sdk = None
-genai_legacy_sdk = None
+# Safely resolve Gemini SDK or HTTP REST fallback
+genai = None
+sdk_type = None  # "generativeai" | "genai" | None
 
 try:
-    from google import genai
-    genai_sdk = genai
-except ImportError:
-    pass
-
-try:
-    import google.generativeai as genai_legacy
-    genai_legacy_sdk = genai_legacy
-except ImportError:
-    pass
+    import google.generativeai as _genai
+    genai = _genai
+    sdk_type = "generativeai"
+except Exception:
+    try:
+        from google import genai as _genai
+        genai = _genai
+        sdk_type = "genai"
+    except Exception:
+        genai = None
+        sdk_type = None
 
 
 class GeminiWrapper:
@@ -36,10 +37,24 @@ class GeminiWrapper:
 
         sys_inst = system_instruction or "You are GrowthOS AI, an expert AI career architect."
 
-        # Provider Strategy 1: Use new google.genai SDK if available
-        if genai_sdk is not None:
+        # Strategy 1: google.generativeai SDK
+        if sdk_type == "generativeai" and genai is not None:
             try:
-                client = genai_sdk.Client(api_key=self.api_key)
+                genai.configure(api_key=self.api_key)
+                model = genai.GenerativeModel(
+                    self.model_name,
+                    system_instruction=sys_inst
+                )
+                response = model.generate_content(prompt)
+                if response and response.text:
+                    return response.text.strip()
+            except Exception as e:
+                logger.warning(f"google.generativeai error ({e}). Trying REST endpoint...")
+
+        # Strategy 2: google.genai SDK
+        elif sdk_type == "genai" and genai is not None:
+            try:
+                client = genai.Client(api_key=self.api_key)
                 response = client.models.generate_content(
                     model=self.model_name,
                     contents=prompt,
@@ -48,23 +63,9 @@ class GeminiWrapper:
                 if response and response.text:
                     return response.text.strip()
             except Exception as e:
-                logger.warning(f"google.genai SDK error ({e}). Trying next provider...")
+                logger.warning(f"google.genai error ({e}). Trying REST endpoint...")
 
-        # Provider Strategy 2: Use google.generativeai SDK if available
-        if genai_legacy_sdk is not None:
-            try:
-                genai_legacy_sdk.configure(api_key=self.api_key)
-                model = genai_legacy_sdk.GenerativeModel(
-                    self.model_name,
-                    system_instruction=sys_inst
-                )
-                response = model.generate_content(prompt)
-                if response and response.text:
-                    return response.text.strip()
-            except Exception as e:
-                logger.warning(f"google.generativeai SDK error ({e}). Trying REST endpoint...")
-
-        # Provider Strategy 3: Direct HTTP REST Call to Google Gemini API (zero-dependency fallback)
+        # Strategy 3: Direct HTTP REST Call to Google Gemini API (zero-dependency fallback)
         try:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model_name}:generateContent?key={self.api_key}"
             payload = {
