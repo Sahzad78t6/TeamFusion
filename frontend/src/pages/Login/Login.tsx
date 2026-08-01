@@ -1,0 +1,144 @@
+import React, { useState } from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { Zap, Mail, Lock, ArrowRight, Github, Chrome } from 'lucide-react';
+import { Button } from '../../components/common/Button';
+
+export const Login: React.FC = () => {
+  const [email, setEmail] = useState('alex.rivera@growthos.ai');
+  const [password, setPassword] = useState('••••••••••••');
+  const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setTimeout(() => {
+      setIsLoading(false);
+      navigate('/dashboard');
+    }, 1000);
+  };
+
+  return (
+    <div className="min-h-screen w-screen bg-[#090a0f] flex items-center justify-center p-4 selection:bg-purple-500 selection:text-white relative overflow-hidden">
+      {/* Background Glow */}
+      <div className="absolute -top-40 -left-40 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl pointer-events-none" />
+
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.4 }}
+        className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 rounded-3xl border border-white/10 bg-[#12141d]/90 backdrop-blur-2xl shadow-2xl shadow-purple-950/50 overflow-hidden"
+      >
+        {/* Left Form Side */}
+        <div className="p-8 md:p-10 flex flex-col justify-between space-y-6">
+          <div>
+            <NavLink to="/" className="inline-flex items-center gap-2 mb-8">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center shadow-lg shadow-purple-500/30">
+                <Zap className="w-5 h-5 text-white" />
+              </div>
+              <span className="font-extrabold text-lg text-white">Growth<span className="text-gradient">OS</span></span>
+            </NavLink>
+
+            <h2 className="text-2xl font-bold text-white">Welcome Back</h2>
+            <p className="text-xs text-slate-400 mt-1">Sign in to resume your AI growth trajectory.</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-300">Work Email</label>
+              <div className="relative">
+                <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500/50"
+                  placeholder="name@company.com"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <div className="flex justify-between items-center text-xs">
+                <label className="font-semibold text-slate-300">Password</label>
+                <a href="#" className="text-purple-400 hover:underline">Forgot password?</a>
+              </div>
+              <div className="relative">
+                <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                <input
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500/50"
+                  placeholder="••••••••"
+                />
+              </div>
+            </div>
+
+            <Button
+              type="submit"
+              variant="glow"
+              className="w-full mt-2"
+              isLoading={isLoading}
+              rightIcon={<ArrowRight className="w-4 h-4" />}
+            >
+              Sign In to Dashboard
+            </Button>
+          </form>
+
+          <div className="space-y-4">
+            <div className="relative flex items-center justify-center">
+              <div className="border-t border-white/10 w-full" />
+              <span className="bg-[#12141d] px-3 text-[10px] uppercase font-bold text-slate-500">Or continue with</span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <button className="flex items-center justify-center gap-2 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-semibold text-slate-300 transition-colors">
+                <Github className="w-4 h-4" /> GitHub
+              </button>
+              <button className="flex items-center justify-center gap-2 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-semibold text-slate-300 transition-colors">
+                <Chrome className="w-4 h-4 text-red-400" /> Google
+              </button>
+            </div>
+
+            <p className="text-center text-xs text-slate-400">
+              Don't have an account?{' '}
+              <NavLink to="/signup" className="text-purple-400 font-bold hover:underline">
+                Sign Up
+              </NavLink>
+            </p>
+          </div>
+        </div>
+
+        {/* Right Showcase Art */}
+        <div className="hidden md:flex flex-col justify-between p-8 bg-gradient-to-br from-purple-900/30 via-indigo-900/20 to-black border-l border-white/10 relative overflow-hidden">
+          <div className="space-y-4 z-10">
+            <span className="px-3 py-1 bg-purple-500/20 text-purple-300 text-[10px] font-extrabold rounded-full uppercase border border-purple-500/30">
+              Identity Twin AI 2.0
+            </span>
+            <h3 className="text-2xl font-extrabold text-white leading-snug">
+              "GrowthOS transformed my career trajectory in 90 days."
+            </h3>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Our autonomous LangGraph agents continuously align your daily tasks, learning resources, and hackathons with your dream role.
+            </p>
+          </div>
+
+          <div className="z-10 pt-8 border-t border-white/10 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-purple-500/20 border border-purple-400/40 flex items-center justify-center text-white font-bold">
+              AR
+            </div>
+            <div>
+              <p className="text-xs font-bold text-white">Alex Rivera</p>
+              <p className="text-[10px] text-slate-400">Principal AI Architect</p>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
