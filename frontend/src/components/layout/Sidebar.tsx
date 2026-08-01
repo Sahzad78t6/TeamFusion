@@ -8,10 +8,6 @@ import {
   Compass,
   Calendar,
   PenTool,
-  Bell,
-  BarChart3,
-  User,
-  Settings,
   ChevronLeft,
   ChevronRight,
   Zap,
@@ -32,9 +28,6 @@ export const Sidebar: React.FC = () => {
     { label: 'Growth Opportunities', path: '/opportunities', icon: Compass, badge: 'AI Match' },
     { label: 'Daily Planner', path: '/planner', icon: Calendar },
     { label: 'Reflection', path: '/reflection', icon: PenTool },
-    { label: 'Notifications', path: '/notifications', icon: Bell, badge: '4' },
-    { label: 'Analytics', path: '/analytics', icon: BarChart3 },
-    { label: 'Profile & Settings', path: '/profile', icon: User },
   ];
 
   return (
@@ -123,11 +116,18 @@ export const Sidebar: React.FC = () => {
         })}
       </div>
 
-      {/* User Profile Mini Bar */}
+      {/* User Profile Bottom Left Button (Opens Profile & Settings) */}
       <div className="p-3 border-t border-white/10">
         <NavLink
           to="/profile"
-          className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-colors group"
+          className={({ isActive }) =>
+            `flex items-center gap-3 p-2 rounded-xl transition-all ${
+              isActive
+                ? 'bg-purple-600/20 border border-purple-500/30 text-white shadow-md'
+                : 'hover:bg-white/5 text-slate-300'
+            } group`
+          }
+          title="Open Profile & Settings"
         >
           <img
             src={user.avatar}
@@ -139,7 +139,7 @@ export const Sidebar: React.FC = () => {
               <span className="text-xs font-bold text-white truncate group-hover:text-indigo-300 transition-colors">
                 {user.name}
               </span>
-              <span className="text-[10px] text-slate-400 truncate">Lvl {user.level} • {user.title}</span>
+              <span className="text-[10px] text-slate-400 truncate">Lvl {user.level} • Profile & Settings</span>
             </div>
           )}
         </NavLink>

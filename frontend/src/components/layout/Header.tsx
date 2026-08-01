@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useLocation, NavLink } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search,
   Sparkles,
@@ -8,16 +9,34 @@ import {
   Moon,
   ChevronRight,
   Flame,
+  Award,
+  Compass,
+  ExternalLink,
+  Check,
+  X,
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useApp } from '../../context/AppContext';
 
 export const Header: React.FC = () => {
   const { theme, toggleTheme } = useTheme();
-  const { user, setIsCopilotOpen, setIsCommandPaletteOpen, notifications } = useApp();
+  const { user, setIsCopilotOpen, setIsCommandPaletteOpen, notifications, markNotificationAsRead } = useApp();
   const location = useLocation();
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const notifRef = useRef<HTMLDivElement>(null);
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
+        setIsNotifOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const pathNames: Record<string, string> = {
     '/': 'Overview',
@@ -28,7 +47,6 @@ export const Header: React.FC = () => {
     '/planner': 'Daily Planner',
     '/reflection': 'Reflection Journal',
     '/notifications': 'Notification Center',
-    '/analytics': 'Analytics & Risk',
     '/profile': 'Profile & Settings',
     '/onboarding': 'Onboarding Wizard',
   };
@@ -75,18 +93,79 @@ export const Header: React.FC = () => {
           {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-300" /> : <Moon className="w-4 h-4 text-indigo-400" />}
         </button>
 
-        {/* Notifications Quick Link */}
-        <NavLink
-          to="/notifications"
-          className="relative p-2 text-slate-400 hover:text-white rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-colors"
-        >
-          <Bell className="w-4 h-4" />
-          {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white ring-2 ring-[#090a0f]">
-              {unreadCount}
-            </span>
-          )}
-        </NavLink>
+        {/* Notifications Popover Dropdown */}
+        <div className="relative" ref={notifRef}>
+          <button
+            onClick={() => setIsNotifOpen(!isNotifOpen)}
+            className="relative p-2 text-slate-400 hover:text-white rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-colors"
+            title="Notifications"
+          >
+            <Bell className="w-4 h-4" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white ring-2 ring-[#090a0f]">
+                {unreadCount}
+              </span>
+            )}
+          </button>
+
+          <AnimatePresence>
+            {isNotifOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                transition={{ duration: 0.15 }}
+                className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl border border-white/10 bg-[#12141d] shadow-2xl shadow-purple-950/60 overflow-hidden z-50 backdrop-blur-2xl"
+              >
+                <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/5">
+                  <div className="flex items-center gap-2">
+                    <Bell className="w-4 h-4 text-purple-400" />
+                    <span className="text-xs font-bold text-white">Notifications</span>
+                    {unreadCount > 0 && (
+                      <span className="px-2 py-0.5 text-[9px] font-bold rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                        {unreadCount} New
+                      </span>
+                    )}
+                  </div>
+                  <NavLink
+                    to="/notifications"
+                    onClick={() => setIsNotifOpen(false)}
+                    className="text-[11px] font-semibold text-purple-400 hover:underline"
+                  >
+                    View All
+                  </NavLink>
+                </div>
+
+                <div className="max-h-80 overflow-y-auto divide-y divide-white/5">
+                  {notifications.map((notif) => (
+                    <div
+                      key={notif.id}
+                      onClick={() => markNotificationAsRead(notif.id)}
+                      className={`p-3.5 hover:bg-white/5 cursor-pointer transition-colors flex items-start gap-3 ${
+                        notif.isRead ? 'opacity-60' : 'bg-purple-950/20'
+                      }`}
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 shrink-0 mt-0.5">
+                        {notif.type === 'milestone' ? (
+                          <Award className="w-4 h-4 text-amber-400" />
+                        ) : notif.type === 'opportunity' ? (
+                          <Compass className="w-4 h-4 text-cyan-400" />
+                        ) : (
+                          <Sparkles className="w-4 h-4 text-purple-400" />
+                        )}
+                      </div>
+                      <div className="flex-1 space-y-0.5">
+                        <h4 className="text-xs font-bold text-white">{notif.title}</h4>
+                        <p className="text-[11px] text-slate-300 leading-snug">{notif.message}</p>
+                        <span className="text-[9px] text-slate-500 block pt-1">{notif.timeAgo}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
 
         {/* AI Copilot Drawer Launcher */}
         <button

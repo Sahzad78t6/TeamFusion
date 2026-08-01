@@ -13,7 +13,6 @@ import { Opportunity } from '../pages/Opportunity/Opportunity';
 import { Planner } from '../pages/Planner/Planner';
 import { Reflection } from '../pages/Reflection/Reflection';
 import { Notifications } from '../pages/Notifications/Notifications';
-import { Analytics } from '../pages/Analytics/Analytics';
 import { Profile } from '../pages/Profile/Profile';
 
 export const AppRoutes: React.FC = () => {
@@ -34,8 +33,8 @@ export const AppRoutes: React.FC = () => {
         <Route path="/planner" element={<Planner />} />
         <Route path="/reflection" element={<Reflection />} />
         <Route path="/notifications" element={<Notifications />} />
-        <Route path="/analytics" element={<Analytics />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/analytics" element={<Profile />} />
       </Route>
 
       {/* Fallback redirect */}
