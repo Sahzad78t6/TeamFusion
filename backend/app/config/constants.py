@@ -1,8 +1,8 @@
 # System-wide constants
 
 COLLECTION_USERS = "users"
-COLLECTION_IDENTITIES = "identities"
-COLLECTION_PLANS = "plans"
+COLLECTION_IDENTITIES = "identity_twins"
+COLLECTION_PLANS = "learning_plans"
 COLLECTION_RECOMMENDATIONS = "recommendations"
 COLLECTION_REFLECTIONS = "reflections"
 COLLECTION_OPPORTUNITIES = "opportunities"

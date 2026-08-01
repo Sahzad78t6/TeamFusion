@@ -1,17 +1,24 @@
-from app.agents.user_understanding.tools import extract_skills_from_profile
-from app.llm.gemini import gemini_llm
+import logging
+from app.agents.user_understanding.tools import generate_identity_twin_analysis
+from app.database.repositories.identity_repository import identity_repository
+
+logger = logging.getLogger(__name__)
 
 class UserUnderstandingAgent:
-    def analyze(self, user_id: str, profile_text: str) -> dict:
-        extracted = extract_skills_from_profile(profile_text)
-        summary = gemini_llm.generate(
-            prompt=f"Profile text: '{profile_text}'. Extracted skills: {extracted}.",
-            system_instruction="Analyze user identity profile."
-        )
-        return {
-            "user_id": user_id,
-            "skills": extracted,
-            "profile_insight": summary
+    async def analyze_and_save(self, user_id: str, onboarding_data: dict) -> dict:
+        logger.info(f"UserUnderstandingAgent analyzing profile for user {user_id}")
+        analysis = generate_identity_twin_analysis(onboarding_data)
+        
+        merged_data = {
+            **onboarding_data,
+            "identity_score": analysis.get("identity_score", 88.0),
+            "identity_drift_percentage": analysis.get("identity_drift_percentage", 12.0),
+            "key_strengths": analysis.get("key_strengths", onboarding_data.get("skills", [])),
+            "skill_gaps": analysis.get("skill_gaps", ["Distributed Systems"]),
+            "strategic_insight": analysis.get("strategic_insight", "Profile processed successfully.")
         }
+        
+        saved_identity = await identity_repository.create_or_update(user_id, merged_data)
+        return saved_identity
 
 user_understanding_agent = UserUnderstandingAgent()

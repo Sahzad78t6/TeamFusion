@@ -1,8 +1,9 @@
 from app.graph.state import GraphState
-from app.agents.planner.agent import planner_agent
-from app.agents.learning_curator.agent import learning_curator_agent
+from app.agents.planner.tools import generate_ai_roadmap
+from app.agents.learning_curator.tools import generate_ai_recommendations
 from app.agents.opportunity.agent import opportunity_agent
-from app.agents.reflection.agent import reflection_agent
+from app.agents.reflection.tools import compute_burnout_risk_indicator
+from app.llm.gemini import gemini_llm
 
 def supervisor_node(state: GraphState) -> GraphState:
     state["history"].append("supervisor_node")
@@ -11,24 +12,25 @@ def supervisor_node(state: GraphState) -> GraphState:
 
 def planner_node(state: GraphState) -> GraphState:
     state["history"].append("planner_node")
-    result = planner_agent.create_plan(state["user_id"], [state["input_text"]])
-    state["output"] = result.get("ai_feedback")
+    roadmap = generate_ai_roadmap(goals=[state["input_text"]])
+    state["output"] = roadmap.get("ai_feedback")
     return state
 
 def learning_curator_node(state: GraphState) -> GraphState:
     state["history"].append("learning_curator_node")
-    res = learning_curator_agent.curate(state["user_id"], state["input_text"])
-    state["output"] = f"Curated {len(res)} learning recommendations."
+    recs = generate_ai_recommendations(target_role=state["input_text"])
+    state["output"] = f"Curated {len(recs)} learning recommendations for {state['input_text']}."
     return state
 
 def opportunity_node(state: GraphState) -> GraphState:
     state["history"].append("opportunity_node")
-    res = opportunity_agent.match(state["user_id"], state["input_text"])
+    res = opportunity_agent.match(state["user_id"], {"goal": state["input_text"]})
     state["output"] = f"Matched {len(res)} career opportunities."
     return state
 
 def reflection_node(state: GraphState) -> GraphState:
     state["history"].append("reflection_node")
-    res = reflection_agent.process(state["user_id"], 4, 4, state["input_text"])
-    state["output"] = res.get("ai_insight")
+    risk = compute_burnout_risk_indicator(4, 4)
+    insight = gemini_llm.generate(prompt=f"Reflection notes: {state['input_text']}. Risk: {risk}")
+    state["output"] = insight
     return state
