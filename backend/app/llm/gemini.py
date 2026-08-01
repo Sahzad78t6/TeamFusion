@@ -1,9 +1,28 @@
 import logging
 import json
 import re
+import urllib.request
+import urllib.parse
 from app.config.settings import settings
 
 logger = logging.getLogger(__name__)
+
+# Module-level imports for Gemini SDKs
+genai_sdk = None
+genai_legacy_sdk = None
+
+try:
+    from google import genai
+    genai_sdk = genai
+except ImportError:
+    pass
+
+try:
+    import google.generativeai as genai_legacy
+    genai_legacy_sdk = genai_legacy
+except ImportError:
+    pass
+
 
 class GeminiWrapper:
     def __init__(self):
@@ -15,15 +34,57 @@ class GeminiWrapper:
         if not self.api_key or self.api_key in ("mock_gemini_api_key", "YOUR_GEMINI_API_KEY"):
             return f"GrowthOS AI Strategy: Focused growth roadmap aligned with your target goals ({prompt[:40]})."
 
+        sys_inst = system_instruction or "You are GrowthOS AI, an expert AI career architect."
+
+        # Provider Strategy 1: Use new google.genai SDK if available
+        if genai_sdk is not None:
+            try:
+                client = genai_sdk.Client(api_key=self.api_key)
+                response = client.models.generate_content(
+                    model=self.model_name,
+                    contents=prompt,
+                    config={"system_instruction": sys_inst}
+                )
+                if response and response.text:
+                    return response.text.strip()
+            except Exception as e:
+                logger.warning(f"google.genai SDK error ({e}). Trying next provider...")
+
+        # Provider Strategy 2: Use google.generativeai SDK if available
+        if genai_legacy_sdk is not None:
+            try:
+                genai_legacy_sdk.configure(api_key=self.api_key)
+                model = genai_legacy_sdk.GenerativeModel(
+                    self.model_name,
+                    system_instruction=sys_inst
+                )
+                response = model.generate_content(prompt)
+                if response and response.text:
+                    return response.text.strip()
+            except Exception as e:
+                logger.warning(f"google.generativeai SDK error ({e}). Trying REST endpoint...")
+
+        # Provider Strategy 3: Direct HTTP REST Call to Google Gemini API (zero-dependency fallback)
         try:
-            import google.generativeai as genai
-            genai.configure(api_key=self.api_key)
-            model = genai.GenerativeModel(self.model_name, system_instruction=system_instruction or "You are GrowthOS AI, an expert AI career architect.")
-            response = model.generate_content(prompt)
-            return response.text.strip()
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model_name}:generateContent?key={self.api_key}"
+            payload = {
+                "contents": [{"parts": [{"text": prompt}]}],
+                "system_instruction": {"parts": [{"text": sys_inst}]}
+            }
+            
+            data = json.dumps(payload).encode("utf-8")
+            req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
+            with urllib.request.urlopen(req, timeout=10) as response:
+                result = json.loads(response.read().decode("utf-8"))
+                candidates = result.get("candidates", [])
+                if candidates:
+                    parts = candidates[0].get("content", {}).get("parts", [])
+                    if parts:
+                        return parts[0].get("text", "").strip()
         except Exception as e:
-            logger.warning(f"Gemini API execution error: {e}. Utilizing AI fallback pipeline.")
-            return f"GrowthOS AI Insight: Continue building deep domain expertise for: {prompt[:40]}..."
+            logger.warning(f"Gemini REST API error ({e}). Utilizing AI strategy fallback.")
+
+        return f"GrowthOS AI Strategy: Continuous deep learning focus for '{prompt[:40]}...'"
 
     def generate_json(self, prompt: str, system_instruction: str = "") -> dict | list | None:
         raw_text = self.generate(
@@ -31,11 +92,10 @@ class GeminiWrapper:
             system_instruction=system_instruction
         )
         try:
-            # Clean markdown JSON block formatting if present
             cleaned = re.sub(r'```(?:json)?\s*([\s\S]*?)\s*```', r'\1', raw_text).strip()
             return json.loads(cleaned)
         except Exception as e:
-            logger.warning(f"Failed to parse JSON from Gemini response ({e}). Raw response: {raw_text[:100]}")
+            logger.warning(f"Failed to parse JSON from Gemini response ({e}).")
             return None
 
 gemini_llm = GeminiWrapper()
