@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { User, Award, Shield, Settings, Moon, Sun, Globe, Bell, CheckCircle2, Trophy, ExternalLink, Sparkles, BarChart3, TrendingUp, Activity, Clock, Zap } from 'lucide-react';
+import { User, Award, Shield, Settings, Moon, Sun, Globe, Bell, CheckCircle2, Trophy, ExternalLink, Sparkles, BarChart3, TrendingUp, Activity, Clock, Zap, LogOut } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useTheme } from '../../context/ThemeContext';
 import { Badge } from '../../components/common/Badge';
@@ -22,9 +23,15 @@ import {
 } from 'recharts';
 
 export const Profile: React.FC = () => {
-  const { user, analytics } = useApp();
+  const { user, analytics, logout } = useApp();
   const { theme, toggleTheme } = useTheme();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'profile' | 'analytics' | 'settings'>('profile');
+
+  const handleSignOut = async () => {
+    await logout();
+    navigate('/login');
+  };
 
   return (
     <div className="space-y-8 pb-12">
@@ -49,32 +56,44 @@ export const Profile: React.FC = () => {
             </div>
           </div>
 
-          {/* 3 Tabs */}
-          <div className="flex items-center gap-2 p-1 bg-white/5 border border-white/10 rounded-xl">
-            <button
-              onClick={() => setActiveTab('profile')}
-              className={`px-4 py-2 text-xs font-semibold rounded-lg transition-colors ${
-                activeTab === 'profile' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-white'
-              }`}
+          <div className="flex flex-wrap items-center gap-3">
+            {/* 3 Tabs */}
+            <div className="flex items-center gap-1.5 p-1 bg-white/5 border border-white/10 rounded-xl">
+              <button
+                onClick={() => setActiveTab('profile')}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+                  activeTab === 'profile' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Profile & Badges
+              </button>
+              <button
+                onClick={() => setActiveTab('analytics')}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+                  activeTab === 'analytics' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Analytics
+              </button>
+              <button
+                onClick={() => setActiveTab('settings')}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+                  activeTab === 'settings' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Settings
+              </button>
+            </div>
+
+            {/* Quick Sign Out Button in Header */}
+            <Button
+              size="sm"
+              variant="danger"
+              onClick={handleSignOut}
+              leftIcon={<LogOut className="w-3.5 h-3.5" />}
             >
-              Profile & Badges
-            </button>
-            <button
-              onClick={() => setActiveTab('analytics')}
-              className={`px-4 py-2 text-xs font-semibold rounded-lg transition-colors ${
-                activeTab === 'analytics' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              Analytics & Telemetry
-            </button>
-            <button
-              onClick={() => setActiveTab('settings')}
-              className={`px-4 py-2 text-xs font-semibold rounded-lg transition-colors ${
-                activeTab === 'settings' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              Settings
-            </button>
+              Sign Out
+            </Button>
           </div>
         </div>
       </div>
@@ -221,7 +240,7 @@ export const Profile: React.FC = () => {
         <div className="glass-panel p-6 rounded-3xl border border-white/10 space-y-6 max-w-2xl">
           <h3 className="text-base font-bold text-white flex items-center gap-2">
             <Settings className="w-5 h-5 text-purple-400" />
-            Application Preferences
+            Application Preferences & Security
           </h3>
 
           <div className="space-y-4 text-xs text-slate-300">
@@ -250,6 +269,21 @@ export const Profile: React.FC = () => {
                 </div>
               </div>
               <Badge variant="cyan">Default</Badge>
+            </div>
+
+            {/* Sign Out Section in Profile Settings */}
+            <div className="flex items-center justify-between p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 mt-6">
+              <div className="flex items-center gap-3">
+                <LogOut className="w-5 h-5 text-rose-400" />
+                <div>
+                  <h4 className="font-bold text-white">Account Session</h4>
+                  <p className="text-[11px] text-slate-400">Sign out of your GrowthOS account session safely</p>
+                </div>
+              </div>
+
+              <Button size="sm" variant="danger" onClick={handleSignOut} leftIcon={<LogOut className="w-4 h-4" />}>
+                Sign Out
+              </Button>
             </div>
           </div>
         </div>
