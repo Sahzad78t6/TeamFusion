@@ -2,8 +2,7 @@ import uuid
 import logging
 from datetime import datetime, timezone
 from fastapi import HTTPException, status
-from app.database.mongodb import get_database
-from app.database.collections import COLLECTION_USERS
+from app.database.repositories.user_repo import UserRepository
 from app.schemas.user import UserSignup, UserLogin, UserResponse
 from app.schemas.auth import TokenResponse, RefreshTokenResponse, MessageResponse
 from app.utils.security import get_password_hash, verify_password
@@ -12,6 +11,7 @@ from app.utils.jwt import create_access_token, create_refresh_token, decode_toke
 # Setup standard logger
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 class AuthService:
     @staticmethod
@@ -26,18 +26,9 @@ class AuthService:
         email_clean = user_in.email.lower().strip()
         logger.info(f"Incoming signup request for: {email_clean}")
 
-        db = get_database()
-        if db is None:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Database connection not initialized"
-            )
-            
-        users_collection = db[COLLECTION_USERS]
-
         # Check existing user in MongoDB
         try:
-            existing_user = await users_collection.find_one({"email": email_clean})
+            existing_user = await UserRepository.find_by_email(email_clean)
             if existing_user:
                 logger.warning(f"Signup failed: Email {email_clean} already exists.")
                 raise HTTPException(
@@ -77,7 +68,7 @@ class AuthService:
 
         # Insert into MongoDB users collection
         try:
-            await users_collection.insert_one(new_user_record)
+            await UserRepository.create_user(new_user_record)
             logger.info(f"User {email_clean} inserted successfully into database.")
         except Exception as e:
             logger.error(f"Database error during user insert: {repr(e)}")
@@ -112,19 +103,11 @@ class AuthService:
         email_clean = credentials.email.lower().strip()
         logger.info(f"Incoming login request for: {email_clean}")
         
-        db = get_database()
-        if db is None:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Database connection not initialized"
-            )
-            
-        users_collection = db[COLLECTION_USERS]
         user_record = None
 
         # Check MongoDB
         try:
-            user_record = await users_collection.find_one({"email": email_clean})
+            user_record = await UserRepository.find_by_email(email_clean)
             if user_record:
                 logger.info(f"User {email_clean} found in database.")
             else:
@@ -160,19 +143,10 @@ class AuthService:
         
         logger.info("JWT tokens generated successfully on login.")
 
-        now_iso = datetime.now(timezone.utc).isoformat()
-
         # Update refresh token in MongoDB
         try:
-            update_res = await users_collection.update_one(
-                {"id": user_id},
-                {"$set": {"refresh_token": refresh_token, "updated_at": now_iso}}
-            )
-            
-            if update_res.modified_count == 0:
-                logger.warning("Update operation modified 0 documents, but user might be updated.")
-            else:
-                logger.info(f"Refresh token updated for {email_clean}.")
+            await UserRepository.update_refresh_token(user_id, refresh_token)
+            logger.info(f"Refresh token updated for {email_clean}.")
         except Exception as e:
             logger.error(f"Database error during refresh token update: {repr(e)}")
             raise HTTPException(
@@ -235,21 +209,8 @@ class AuthService:
         """
         logger.info(f"Incoming logout request for user ID: {user_id}")
         
-        db = get_database()
-        if db is None:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Database connection not initialized"
-            )
-            
-        users_collection = db[COLLECTION_USERS]
-        
         try:
-            await users_collection.update_one(
-                {"id": user_id},
-                {"$set": {"refresh_token": None, "updated_at": datetime.now(timezone.utc).isoformat()}}
-            )
-            
+            await UserRepository.update_refresh_token(user_id, None)
             logger.info(f"Successfully logged out user ID: {user_id}")
         except Exception as e:
             logger.error(f"Database error during logout: {repr(e)}")

@@ -1,4 +1,4 @@
-# GrowthOS MongoDB Collections
+# GrowthOS MongoDB Collections Constants
 
 COLLECTION_USERS = "users"
 COLLECTION_IDENTITY_TWINS = "identity_twins"

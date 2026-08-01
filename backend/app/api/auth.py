@@ -11,7 +11,7 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 async def signup(user_in: UserSignup):
     """
     User Signup Endpoint:
-    Registers a new user, hashes password with bcrypt, stores record in Supabase, and returns JWT access/refresh tokens.
+    Registers a new user, hashes password with bcrypt, stores record in MongoDB, and returns JWT access/refresh tokens.
     """
     return await AuthService.signup(user_in)
 
