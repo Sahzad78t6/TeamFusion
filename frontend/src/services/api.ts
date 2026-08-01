@@ -207,6 +207,22 @@ export async function getRecommendationsApi(token: string): Promise<any> {
   return data;
 }
 
+export async function refreshRecommendationsApi(token: string): Promise<any> {
+  const response = await safeFetch(`${API_BASE_URL}/recommendation/refresh`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.detail || 'Failed to trigger Learning Curator Agent.');
+  }
+  return data;
+}
+
 // Opportunities API
 export async function getOpportunitiesApi(token: string): Promise<any> {
   const response = await safeFetch(`${API_BASE_URL}/opportunity`, {

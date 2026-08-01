@@ -13,4 +13,8 @@ class RecommendationService:
         logger.info(f"Generating new recommendations for user_id: {user_id}")
         return await learning_curator_agent.curate_and_save(user_id)
 
+    async def refresh_recommendations(self, user_id: str) -> dict:
+        logger.info(f"Forcing LearningCuratorAgent refresh for user_id: {user_id}")
+        return await learning_curator_agent.curate_and_save(user_id)
+
 recommendation_service = RecommendationService()
