@@ -9,6 +9,11 @@ class RecommendationItem(BaseModel):
     url: Optional[str] = None
     match_score: float = 0.95
     tags: List[str] = []
+    author: Optional[str] = None
+    duration: Optional[str] = None
+    rating: Optional[float] = None
+    progress_percentage: Optional[int] = None
+    image_url: Optional[str] = None
 
 class RecommendationResponse(BaseModel):
     user_id: str

@@ -7,6 +7,7 @@ class TaskItem(BaseModel):
     completed: bool = False
     duration_mins: int = 30
     priority: str = "medium"
+    category: str = "Learning"
 
 class PlanCreate(BaseModel):
     date: str

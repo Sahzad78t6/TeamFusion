@@ -1,178 +1,46 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, X, Send, Bot, User, Flame, ArrowUpRight, RefreshCw } from 'lucide-react';
+import { Sparkles, X, Send, Bot, User, Loader2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { chatWithCopilotApi } from '../../services/api';
 
-interface Message {
-  id: string;
-  sender: 'ai' | 'user';
-  text: string;
-  timestamp: string;
-  actions?: { label: string; action: string }[];
-}
+interface Message { id: string; sender: 'ai' | 'user'; text: string; timestamp: string; }
 
 export const CopilotDrawer: React.FC = () => {
-  const { isCopilotOpen, setIsCopilotOpen, identityTwin, user } = useApp();
+  const { isCopilotOpen, setIsCopilotOpen, identityTwin, user, authToken, refreshDashboard } = useApp();
   const [input, setInput] = useState('');
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 'm-1',
-      sender: 'ai',
-      text: `Hello ${user.name}! I am your GrowthOS Copilot. Your Identity Alignment with Founder Archetype is currently at ${identityTwin.alignmentPercentage}%. How can I accelerate your learning or gap resolution today?`,
-      timestamp: 'Just now',
-      actions: [
-        { label: 'Analyze VC Knowledge Gap', action: 'vc_gap' },
-        { label: 'Suggest Today\'s Deep Work Plan', action: 'plan' },
-        { label: 'Check Burnout Risk Factor', action: 'burnout' },
-      ],
-    },
-  ]);
+  const [isSending, setIsSending] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([]);
 
-  if (!isCopilotOpen) return null;
+  useEffect(() => {
+    setMessages([{ id: 'welcome', sender: 'ai', timestamp: 'Just now', text: `Hi ${user.name}! I can create a plan, curate learning resources, find opportunities, or process a reflection. Your alignment is ${identityTwin.alignmentPercentage}%.` }]);
+  }, [user.name, identityTwin.alignmentPercentage]);
 
-  const handleSend = (textToSend?: string) => {
-    const text = textToSend || input;
-    if (!text.trim()) return;
-
-    const userMsg: Message = {
-      id: `usr-${Date.now()}`,
-      sender: 'user',
-      text,
-      timestamp: 'Just now',
-    };
-
-    setMessages((prev) => [...prev, userMsg]);
+  const handleSend = async (suggestion?: string) => {
+    const text = (suggestion || input).trim();
+    if (!text || isSending) return;
+    setMessages((current) => [...current, { id: `user-${Date.now()}`, sender: 'user', text, timestamp: 'Just now' }]);
     setInput('');
-
-    // Simulate AI Copilot Response
-    setTimeout(() => {
-      let aiText = `I have analyzed your Identity Twin and daily reflections. Here is my strategic recommendation for "${text}": Focus on 45 minutes of agentic routing edge design today, followed by reviewing pitch deck narratives.`;
-      if (text.toLowerCase().includes('burnout')) {
-        aiText = `Your current Burnout Risk Score is at 14% (Low). However, your sleep window drifted by 45 minutes last night. Recommend taking a 20-minute phone-free walk before your 4 PM deep work block.`;
-      } else if (text.toLowerCase().includes('vc') || text.toLowerCase().includes('venture')) {
-        aiText = `To bridge your VC & Business knowledge gap (currently 50/100), I've added 'The Founder Playbook: Chapter 4 on SaaS Unit Economics' to your top priority learning queue.`;
-      }
-
-      const aiMsg: Message = {
-        id: `ai-${Date.now()}`,
-        sender: 'ai',
-        text: aiText,
-        timestamp: 'Just now',
-      };
-      setMessages((prev) => [...prev, aiMsg]);
-    }, 800);
+    if (!authToken) {
+      setMessages((current) => [...current, { id: `error-${Date.now()}`, sender: 'ai', text: 'Please sign in first so I can use your saved profile and run the right agent.', timestamp: 'Just now' }]);
+      return;
+    }
+    setIsSending(true);
+    try {
+      const response = await chatWithCopilotApi(authToken, text);
+      setMessages((current) => [...current, { id: `ai-${Date.now()}`, sender: 'ai', text: response.message, timestamp: `Handled by ${response.agent.replace('_', ' ')}` }]);
+      await refreshDashboard();
+    } catch (error) {
+      const text = error instanceof Error ? error.message : 'Something went wrong while contacting the Copilot.';
+      setMessages((current) => [...current, { id: `error-${Date.now()}`, sender: 'ai', text, timestamp: 'Just now' }]);
+    } finally { setIsSending(false); }
   };
 
-  return (
-    <AnimatePresence>
-      <div className="fixed inset-0 z-50 overflow-hidden bg-black/60 backdrop-blur-sm flex justify-end">
-        <motion.div
-          initial={{ x: '100%' }}
-          animate={{ x: 0 }}
-          exit={{ x: '100%' }}
-          transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-          className="w-full max-w-md h-full bg-[#12141d] border-l border-white/10 flex flex-col shadow-2xl shadow-purple-950/50"
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between px-5 py-4 border-b border-white/10 bg-white/5">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center shadow-md shadow-purple-500/30">
-                <Sparkles className="w-5 h-5 text-amber-300 fill-amber-300" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
-                  GrowthOS Copilot <span className="px-1.5 py-0.5 text-[9px] font-extrabold bg-purple-500/20 text-purple-300 rounded border border-purple-500/30">PRO</span>
-                </h3>
-                <p className="text-[10px] text-slate-400">Autonomous Growth & Identity AI</p>
-              </div>
-            </div>
-            <button
-              onClick={() => setIsCopilotOpen(false)}
-              className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-white/10"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-
-          {/* Messages Body */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {messages.map((m) => (
-              <div
-                key={m.id}
-                className={`flex gap-3 ${m.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                {m.sender === 'ai' && (
-                  <div className="w-7 h-7 rounded-lg bg-indigo-600/30 border border-indigo-500/30 flex items-center justify-center shrink-0">
-                    <Bot className="w-4 h-4 text-indigo-400" />
-                  </div>
-                )}
-
-                <div className={`max-w-[82%] space-y-2`}>
-                  <div
-                    className={`p-3.5 rounded-2xl text-xs leading-relaxed ${
-                      m.sender === 'user'
-                        ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-br-none shadow-md shadow-indigo-500/20'
-                        : 'bg-white/5 border border-white/10 text-slate-200 rounded-bl-none backdrop-blur-md'
-                    }`}
-                  >
-                    {m.text}
-                  </div>
-
-                  {m.actions && (
-                    <div className="flex flex-wrap gap-1.5 pt-1">
-                      {m.actions.map((act) => (
-                        <button
-                          key={act.action}
-                          onClick={() => handleSend(act.label)}
-                          className="px-2.5 py-1 text-[10px] font-semibold text-purple-300 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 rounded-full transition-colors flex items-center gap-1"
-                        >
-                          <span>{act.label}</span>
-                          <ArrowUpRight className="w-3 h-3" />
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  <span className="text-[9px] text-slate-500 block px-1">{m.timestamp}</span>
-                </div>
-
-                {m.sender === 'user' && (
-                  <img
-                    src={user.avatar}
-                    alt="User"
-                    className="w-7 h-7 rounded-lg object-cover border border-purple-500/30 shrink-0"
-                  />
-                )}
-              </div>
-            ))}
-          </div>
-
-          {/* Input Footer */}
-          <div className="p-4 border-t border-white/10 bg-white/5">
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleSend();
-              }}
-              className="flex items-center gap-2"
-            >
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask Copilot about identity, tasks, or courses..."
-                className="flex-1 px-3.5 py-2.5 text-xs text-white bg-black/40 border border-white/10 rounded-xl placeholder-slate-500 focus:outline-none focus:border-purple-500/50"
-              />
-              <button
-                type="submit"
-                className="p-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl shadow-lg shadow-purple-500/25 transition-all"
-              >
-                <Send className="w-4 h-4" />
-              </button>
-            </form>
-          </div>
-        </motion.div>
-      </div>
-    </AnimatePresence>
-  );
+  if (!isCopilotOpen) return null;
+  return <AnimatePresence><div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm">
+    <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 25 }} className="flex h-full w-full max-w-md flex-col border-l border-white/10 bg-[#12141d] shadow-2xl">
+      <div className="flex items-center justify-between border-b border-white/10 bg-white/5 px-5 py-4"><div className="flex items-center gap-3"><Sparkles className="h-5 w-5 text-amber-300" /><div><h3 className="text-sm font-bold text-white">GrowthOS Copilot</h3><p className="text-[10px] text-slate-400">Live multi-agent growth assistant</p></div></div><button onClick={() => setIsCopilotOpen(false)} className="rounded-lg p-2 text-slate-400 hover:bg-white/10 hover:text-white"><X className="h-5 w-5" /></button></div>
+      <div className="flex-1 space-y-4 overflow-y-auto p-4">{messages.map((message) => <div key={message.id} className={`flex gap-3 ${message.sender === 'user' ? 'justify-end' : ''}`}>{message.sender === 'ai' && <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-indigo-600/30"><Bot className="h-4 w-4 text-indigo-300" /></div>}<div className={`max-w-[82%] rounded-2xl p-3 text-xs leading-relaxed ${message.sender === 'user' ? 'bg-indigo-600 text-white' : 'border border-white/10 bg-white/5 text-slate-200'}`}><p>{message.text}</p><span className="mt-2 block text-[9px] opacity-60">{message.timestamp}</span></div>{message.sender === 'user' && <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-purple-600"><User className="h-4 w-4 text-white" /></div>}</div>)}{isSending && <div className="flex items-center gap-2 text-xs text-indigo-300"><Loader2 className="h-4 w-4 animate-spin" /> Running your agent…</div>}</div>
+      <div className="border-t border-white/10 bg-white/5 p-4"><div className="mb-3 flex flex-wrap gap-2">{['Make a plan for today', 'Recommend courses for me', 'Find career opportunities', 'I need a reflection check-in'].map((item) => <button key={item} onClick={() => handleSend(item)} disabled={isSending} className="rounded-full border border-purple-500/30 bg-purple-500/10 px-2 py-1 text-[10px] text-purple-200 disabled:opacity-50">{item}</button>)}</div><form onSubmit={(event) => { event.preventDefault(); handleSend(); }} className="flex gap-2"><input value={input} onChange={(event) => setInput(event.target.value)} disabled={isSending} placeholder="Ask about plans, learning, opportunities..." className="flex-1 rounded-xl border border-white/10 bg-black/40 px-3 py-2.5 text-xs text-white placeholder:text-slate-500" /><button disabled={isSending} type="submit" className="rounded-xl bg-indigo-600 p-2.5 text-white disabled:opacity-50"><Send className="h-4 w-4" /></button></form></div>
+    </motion.div></div></AnimatePresence>;
 };

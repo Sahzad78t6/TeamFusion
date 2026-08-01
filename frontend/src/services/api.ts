@@ -256,3 +256,20 @@ export async function getNotificationsApi(token: string): Promise<any> {
   }
   return data;
 }
+
+export interface CopilotResponse {
+  agent: string;
+  message: string;
+  data?: unknown;
+}
+
+export async function chatWithCopilotApi(token: string, message: string): Promise<CopilotResponse> {
+  const response = await safeFetch(`${API_BASE_URL}/copilot/chat`, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message }),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.detail || 'The AI Copilot could not complete that request.');
+  return data;
+}

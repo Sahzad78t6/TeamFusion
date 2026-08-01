@@ -15,6 +15,7 @@ from app.api import (
     recommendation,
     opportunity,
     notification,
+    copilot,
     health
 )
 
@@ -49,6 +50,7 @@ api_router.include_router(reflection.router)
 api_router.include_router(recommendation.router)
 api_router.include_router(opportunity.router)
 api_router.include_router(notification.router)
+api_router.include_router(copilot.router)
 api_router.include_router(health.router)
 
 app.include_router(api_router)
@@ -62,6 +64,7 @@ app.include_router(reflection.router)
 app.include_router(recommendation.router)
 app.include_router(opportunity.router)
 app.include_router(notification.router)
+app.include_router(copilot.router)
 app.include_router(health.router)
 
 @app.get("/", tags=["Root"])

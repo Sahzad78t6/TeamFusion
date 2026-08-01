@@ -20,6 +20,9 @@ class IdentityRepository:
             "target_role": data.get("target_role") or data.get("goal") or "Senior AI Architect",
             "identity_score": data.get("identity_score", 85.0),
             "identity_drift_percentage": data.get("identity_drift_percentage", 12.0),
+            "key_strengths": data.get("key_strengths", data.get("skills", [])),
+            "skill_gaps": data.get("skill_gaps", []),
+            "strategic_insight": data.get("strategic_insight"),
             "updated_at": get_utc_now()
         }
         collection = get_collection(COLLECTION_IDENTITIES)
