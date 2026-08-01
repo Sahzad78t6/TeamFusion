@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Zap, ArrowRight, ArrowLeft, Check, Sparkles, Target, Compass, Clock, BookOpen } from 'lucide-react';
+import { Zap, ArrowRight, ArrowLeft, Check, Target, Clock, Loader2 } from 'lucide-react';
 import { Button } from '../../components/common/Button';
+import { useApp } from '../../context/AppContext';
 
 export const Onboarding: React.FC = () => {
   const [step, setStep] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
   const navigate = useNavigate();
+  const { submitOnboarding } = useApp();
 
   // Onboarding Form State
   const [formData, setFormData] = useState({
@@ -38,11 +42,35 @@ export const Onboarding: React.FC = () => {
     }));
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (step < totalSteps) {
       setStep(step + 1);
     } else {
-      navigate('/dashboard');
+      setIsSubmitting(true);
+      setErrorMsg('');
+      try {
+        await submitOnboarding({
+          goal: formData.dreamCareer,
+          target_role: formData.dreamCareer,
+          current_role: formData.currentLevel,
+          skills: formData.skills,
+          interests: formData.interests,
+          experience: formData.currentLevel,
+          learning_style: formData.learningStyle,
+          available_time: formData.timeCommitment,
+          preferred_content: ['Courses', 'Interactive Labs'],
+          language: 'English',
+        });
+        navigate('/dashboard');
+      } catch (err: any) {
+        console.error('Onboarding submission error:', err);
+        setErrorMsg(err.message || 'Failed to calibrate identity twin. Proceeding to dashboard.');
+        setTimeout(() => {
+          navigate('/dashboard');
+        }, 1500);
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -50,7 +78,7 @@ export const Onboarding: React.FC = () => {
     <div className="min-h-screen w-screen bg-[#090a0f] flex items-center justify-center p-4 selection:bg-purple-500 selection:text-white relative overflow-hidden">
       <div className="absolute -top-40 left-1/3 w-[500px] h-[500px] bg-purple-600/15 rounded-full blur-[140px] pointer-events-none" />
 
-      <div className="w-full max-w-2xl bg-[#12141d]/90 border border-white/10 rounded-3xl p-6 md:p-10 shadow-2xl backdrop-blur-2xl space-y-8">
+      <div className="w-full max-w-2xl bg-[#12141d]/90 border border-white/10 rounded-3xl p-6 md:p-10 shadow-2xl backdrop-blur-2xl space-y-8 relative">
         {/* Wizard Top Bar */}
         <div className="flex items-center justify-between border-b border-white/10 pb-6">
           <div className="flex items-center gap-3">
@@ -79,6 +107,12 @@ export const Onboarding: React.FC = () => {
             ))}
           </div>
         </div>
+
+        {errorMsg && (
+          <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-xs text-rose-300">
+            {errorMsg}
+          </div>
+        )}
 
         {/* Step Contents */}
         <AnimatePresence mode="wait">
@@ -261,13 +295,29 @@ export const Onboarding: React.FC = () => {
         {/* Wizard Bottom Controls */}
         <div className="flex items-center justify-between border-t border-white/10 pt-6">
           {step > 1 ? (
-            <Button variant="ghost" size="sm" onClick={() => setStep(step - 1)} leftIcon={<ArrowLeft className="w-4 h-4" />}>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={isSubmitting}
+              onClick={() => setStep(step - 1)}
+              leftIcon={<ArrowLeft className="w-4 h-4" />}
+            >
               Back
             </Button>
           ) : <div />}
 
-          <Button variant="glow" size="md" onClick={handleNext} rightIcon={<ArrowRight className="w-4 h-4" />}>
-            {step === totalSteps ? 'Calibrate & Launch Dashboard' : 'Continue'}
+          <Button
+            variant="glow"
+            size="md"
+            disabled={isSubmitting}
+            onClick={handleNext}
+            rightIcon={isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
+          >
+            {isSubmitting
+              ? 'Calibrating Twin via Gemini...'
+              : step === totalSteps
+              ? 'Calibrate & Launch Dashboard'
+              : 'Continue'}
           </Button>
         </div>
       </div>

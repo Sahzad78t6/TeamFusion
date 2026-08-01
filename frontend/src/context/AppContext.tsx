@@ -19,7 +19,14 @@ import {
   mockNotifications,
   mockAnalytics,
 } from '../utils/dummyData';
-import { AuthUserResponse, getMeApi, logoutApi } from '../services/api';
+import {
+  AuthUserResponse,
+  getMeApi,
+  logoutApi,
+  submitOnboardingApi,
+  getDashboardApi,
+  OnboardingPayload,
+} from '../services/api';
 
 interface AppContextType {
   user: UserProfile;
@@ -29,9 +36,13 @@ interface AppContextType {
   setAuthSession: (accessToken: string, refreshToken: string, authUser: AuthUserResponse) => void;
   logout: () => void;
   identityTwin: IdentityTwin;
+  setIdentityTwin: React.Dispatch<React.SetStateAction<IdentityTwin>>;
   learningResources: LearningResource[];
+  setLearningResources: React.Dispatch<React.SetStateAction<LearningResource[]>>;
   opportunities: Opportunity[];
+  setOpportunities: React.Dispatch<React.SetStateAction<Opportunity[]>>;
   tasks: TaskItem[];
+  setTasks: React.Dispatch<React.SetStateAction<TaskItem[]>>;
   reflections: ReflectionEntry[];
   notifications: NotificationItem[];
   analytics: AnalyticsSummary;
@@ -45,6 +56,8 @@ interface AppContextType {
   toggleFavoriteOpportunity: (oppId: string) => void;
   markNotificationAsRead: (notifId: string) => void;
   addReflection: (entry: Omit<ReflectionEntry, 'id' | 'date'>) => void;
+  submitOnboarding: (payload: OnboardingPayload) => Promise<any>;
+  refreshDashboard: () => Promise<void>;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
 }
@@ -60,7 +73,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [tasks, setTasks] = useState<TaskItem[]>(mockTasks);
   const [reflections, setReflections] = useState<ReflectionEntry[]>(mockReflections);
   const [notifications, setNotifications] = useState<NotificationItem[]>(mockNotifications);
-  const [analytics] = useState<AnalyticsSummary>(mockAnalytics);
+  const [analytics, setAnalytics] = useState<AnalyticsSummary>(mockAnalytics);
   const [isCopilotOpen, setIsCopilotOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -99,7 +112,96 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setAuthToken(null);
   };
 
-  // Fetch current user from backend API on mount if token exists
+  const refreshDashboard = async () => {
+    if (!authToken) return;
+    try {
+      const data = await getDashboardApi(authToken);
+      if (data.identity_twin) {
+        setIdentityTwin((prev) => ({
+          ...prev,
+          dreamArchetype: data.identity_twin.target_role || data.identity_twin.goal || prev.dreamArchetype,
+          alignmentPercentage: Math.round(data.identity_twin.identity_score || prev.alignmentPercentage),
+          driftScore: Math.round(data.identity_twin.identity_drift_percentage || prev.driftScore),
+        }));
+      }
+      if (data.analytics) {
+        setAnalytics((prev) => ({
+          ...prev,
+          growthPredictionScore: Math.round(data.analytics.growth_score || prev.growthPredictionScore),
+          learningHoursTotal: data.analytics.weekly_hours_logged || prev.learningHoursTotal,
+        }));
+      }
+      if (data.roadmap && data.roadmap.tasks) {
+        setTasks(
+          data.roadmap.tasks.map((t: any) => ({
+            id: t.id,
+            title: t.title,
+            isCompleted: t.completed || false,
+            estimatedMins: t.duration_mins || 30,
+            category: t.category || 'Roadmap',
+            priority: t.priority || 'medium',
+            time: '09:00 AM',
+            duration: `${t.duration_mins || 30} mins`,
+            date: 'Today',
+            type: 'learning',
+          }))
+        );
+      }
+      if (data.recommendations && data.recommendations.length > 0) {
+        setLearningResources(
+          data.recommendations.map((r: any) => ({
+            id: r.id,
+            title: r.title,
+            type: r.type || 'course',
+            author: r.provider || 'GrowthOS',
+            platform: r.provider || 'GrowthOS',
+            duration: '2 Hours',
+            difficulty: 'Intermediate',
+            category: 'AI Architecture',
+            rating: 4.9,
+            imageUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=400&q=80',
+            link: r.url || '#',
+            tags: r.tags || ['AI'],
+            isBookmarked: false,
+            isLiked: false,
+            progressPercentage: 0,
+          }))
+        );
+      }
+      if (data.notifications && data.notifications.length > 0) {
+        setNotifications(
+          data.notifications.map((n: any) => ({
+            id: n.id,
+            title: n.title,
+            message: n.message,
+            timeAgo: 'Just now',
+            isRead: n.read || false,
+            type: n.type || 'milestone',
+          }))
+        );
+      }
+    } catch (e) {
+      console.warn('Dashboard refresh failed:', e);
+    }
+  };
+
+  const submitOnboarding = async (payload: OnboardingPayload) => {
+    setIdentityTwin((prev) => ({
+      ...prev,
+      dreamArchetype: payload.target_role || payload.goal,
+    }));
+    setUser((prev) => ({
+      ...prev,
+      dreamRole: payload.target_role || payload.goal,
+    }));
+
+    if (authToken) {
+      const res = await submitOnboardingApi(authToken, payload);
+      await refreshDashboard();
+      return res;
+    }
+  };
+
   useEffect(() => {
     if (authToken) {
       getMeApi(authToken)
@@ -110,12 +212,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             name: me.name || prev.name,
             email: me.email || prev.email,
           }));
+          refreshDashboard();
         })
         .catch(() => {
           // Token expired
         });
     }
-  }, []);
+  }, [authToken]);
 
   const toggleTask = (taskId: string) => {
     setTasks((prev) =>
@@ -166,9 +269,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setAuthSession,
         logout,
         identityTwin,
+        setIdentityTwin,
         learningResources,
+        setLearningResources,
         opportunities,
+        setOpportunities,
         tasks,
+        setTasks,
         reflections,
         notifications,
         analytics,
@@ -182,6 +289,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         toggleFavoriteOpportunity,
         markNotificationAsRead,
         addReflection,
+        submitOnboarding,
+        refreshDashboard,
         searchQuery,
         setSearchQuery,
       }}
