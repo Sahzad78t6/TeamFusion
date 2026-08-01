@@ -15,9 +15,13 @@ import {
   Activity,
   Award,
   ChevronRight,
+  Play,
 } from 'lucide-react';
 import { Button } from '../../components/common/Button';
 import { Badge } from '../../components/common/Badge';
+import { ParticleCanvas } from '../../components/common/ParticleCanvas';
+import { CustomCursor } from '../../components/common/CustomCursor';
+import { TiltCard } from '../../components/common/TiltCard';
 
 export const Landing: React.FC = () => {
   const [typedText, setTypedText] = useState('');
@@ -34,7 +38,13 @@ export const Landing: React.FC = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#090a0f] text-slate-100 selection:bg-purple-500 selection:text-white overflow-x-hidden font-sans">
+    <div className="min-h-screen bg-[#090a0f] text-slate-100 selection:bg-purple-500 selection:text-white overflow-x-hidden font-sans relative">
+      {/* WebGL / Canvas Particle Mesh Background */}
+      <ParticleCanvas />
+
+      {/* Custom Glowing Cursor Follower */}
+      <CustomCursor />
+
       {/* Background Animated Gradient Blobs */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
         <div className="absolute -top-40 -left-40 w-[600px] h-[600px] bg-purple-600/15 rounded-full blur-[140px] animate-pulse-slow" />
@@ -46,7 +56,7 @@ export const Landing: React.FC = () => {
       <nav className="sticky top-0 z-40 flex items-center justify-between px-6 py-4 border-b border-white/10 bg-[#090a0f]/80 backdrop-blur-xl max-w-7xl mx-auto rounded-b-2xl mt-2">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/30">
-            <Zap className="w-5 h-5 text-white" />
+            <Zap className="w-5 h-5 text-white animate-pulse" />
           </div>
           <span className="font-extrabold text-xl tracking-tight text-white">
             Growth<span className="text-gradient">OS</span>
@@ -101,7 +111,7 @@ export const Landing: React.FC = () => {
             </Button>
           </NavLink>
           <NavLink to="/dashboard">
-            <Button size="lg" variant="secondary">
+            <Button size="lg" variant="secondary" leftIcon={<Play className="w-4 h-4 text-purple-400 fill-purple-400" />}>
               Explore Live Demo Dashboard
             </Button>
           </NavLink>
@@ -112,7 +122,7 @@ export const Landing: React.FC = () => {
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2 }}
-          className="mt-16 relative rounded-2xl border border-white/15 bg-slate-900/70 p-3 shadow-2xl shadow-purple-950/60 backdrop-blur-2xl overflow-hidden"
+          className="mt-16 relative rounded-3xl border border-white/15 bg-slate-900/70 p-3 shadow-2xl shadow-purple-950/60 backdrop-blur-2xl overflow-hidden group hover:border-purple-500/40 transition-colors"
         >
           <div className="absolute top-0 left-0 right-0 h-10 bg-white/5 border-b border-white/10 flex items-center px-4 gap-2">
             <div className="w-3 h-3 rounded-full bg-rose-500/80" />
@@ -123,7 +133,7 @@ export const Landing: React.FC = () => {
 
           <div className="pt-10 pb-4 px-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-left">
             {/* Widget 1 */}
-            <div className="p-5 rounded-xl bg-white/5 border border-white/10 backdrop-blur-md space-y-3">
+            <TiltCard className="p-5 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold uppercase tracking-wider text-purple-400">Identity Alignment</span>
                 <Badge variant="purple">88% Match</Badge>
@@ -133,10 +143,10 @@ export const Landing: React.FC = () => {
                 <div className="bg-gradient-to-r from-purple-500 to-indigo-500 h-full w-[88%]" />
               </div>
               <span className="text-[11px] text-slate-400">Identity drift reduced by 12% this week.</span>
-            </div>
+            </TiltCard>
 
             {/* Widget 2 */}
-            <div className="p-5 rounded-xl bg-white/5 border border-white/10 backdrop-blur-md space-y-3">
+            <TiltCard className="p-5 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold uppercase tracking-wider text-cyan-400">Growth Score</span>
                 <Badge variant="cyan">+14% MoM</Badge>
@@ -147,10 +157,10 @@ export const Landing: React.FC = () => {
                 <span>Burnout Risk: 14% (Low)</span>
               </div>
               <span className="text-[11px] text-slate-400">24 consecutive daily learning reflections.</span>
-            </div>
+            </TiltCard>
 
             {/* Widget 3 */}
-            <div className="p-5 rounded-xl bg-white/5 border border-white/10 backdrop-blur-md space-y-3">
+            <TiltCard className="p-5 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">AI Curator Pick</span>
                 <Badge variant="green">Top Match</Badge>
@@ -158,12 +168,12 @@ export const Landing: React.FC = () => {
               <p className="text-sm font-bold text-white line-clamp-1">LangGraph Multi-Agent Architecture</p>
               <p className="text-xs text-slate-400">4.5h Course • DeepMind & GrowthOS</p>
               <Button size="sm" variant="outline" className="w-full text-xs py-1">Start Module</Button>
-            </div>
+            </TiltCard>
           </div>
         </motion.div>
       </section>
 
-      {/* Features Grid */}
+      {/* Features Grid with Tilt Cards */}
       <section id="features" className="py-20 px-6 max-w-6xl mx-auto z-10 relative">
         <div className="text-center max-w-2xl mx-auto mb-16">
           <Badge variant="purple">Core Capabilities</Badge>
@@ -212,13 +222,13 @@ export const Landing: React.FC = () => {
           ].map((f, i) => {
             const Icon = f.icon;
             return (
-              <div key={i} className="glass-card p-6 rounded-2xl space-y-4">
-                <div className={`w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center ${f.color}`}>
+              <TiltCard key={i} className="p-6 space-y-4">
+                <div className={`w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center ${f.color}`}>
                   <Icon className="w-6 h-6" />
                 </div>
                 <h3 className="text-lg font-bold text-white">{f.title}</h3>
                 <p className="text-xs text-slate-400 leading-relaxed">{f.desc}</p>
-              </div>
+              </TiltCard>
             );
           })}
         </div>
@@ -226,7 +236,7 @@ export const Landing: React.FC = () => {
 
       {/* Architecture Preview Section */}
       <section id="architecture" className="py-20 px-6 max-w-6xl mx-auto z-10 relative">
-        <div className="glass-panel p-8 md:p-12 rounded-3xl border border-white/10">
+        <div className="glass-panel p-8 md:p-12 rounded-3xl border border-white/10 relative overflow-hidden">
           <div className="flex flex-col md:flex-row items-center justify-between gap-8">
             <div className="space-y-4 max-w-lg text-left">
               <Badge variant="blue">System Architecture</Badge>
@@ -242,7 +252,7 @@ export const Landing: React.FC = () => {
               </div>
             </div>
 
-            <div className="w-full md:w-1/2 p-6 rounded-2xl bg-black/50 border border-white/10 font-mono text-xs text-slate-300 space-y-2">
+            <div className="w-full md:w-1/2 p-6 rounded-2xl bg-black/60 border border-purple-500/30 font-mono text-xs text-slate-300 space-y-2 shadow-2xl shadow-purple-950/50">
               <div className="text-purple-400 font-bold">// LangGraph Workflow Graph</div>
               <div className="text-slate-400">User Prompt → Supervisor Router</div>
               <div className="pl-4 text-emerald-400">├── Identity Agent (Evaluates Drift)</div>
@@ -288,12 +298,10 @@ export const Landing: React.FC = () => {
               variant: 'outline' as const,
             },
           ].map((plan, i) => (
-            <div
+            <TiltCard
               key={i}
-              className={`p-6 rounded-2xl relative flex flex-col justify-between ${
-                plan.popular
-                  ? 'glass-card border-purple-500/50 shadow-2xl shadow-purple-950/50 scale-105'
-                  : 'bg-white/5 border border-white/10'
+              className={`p-6 relative flex flex-col justify-between ${
+                plan.popular ? 'border-purple-500/50 shadow-2xl shadow-purple-950/50 scale-105' : ''
               }`}
             >
               {plan.popular && (
@@ -323,13 +331,13 @@ export const Landing: React.FC = () => {
                   {plan.button}
                 </Button>
               </NavLink>
-            </div>
+            </TiltCard>
           ))}
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-white/10 py-12 px-6 max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6 text-xs text-slate-500">
+      <footer className="border-t border-white/10 py-12 px-6 max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6 text-xs text-slate-500 relative z-10">
         <div className="flex items-center gap-2">
           <Zap className="w-4 h-4 text-purple-400" />
           <span className="font-bold text-slate-300">GrowthOS © 2026</span>

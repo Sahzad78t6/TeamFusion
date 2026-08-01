@@ -4,7 +4,8 @@ import { Sparkles, ArrowRight, Target, Brain, ShieldAlert, CheckCircle2, Trendin
 import { useApp } from '../../context/AppContext';
 import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
-import { ProgressRing } from '../../components/common/ProgressRing';
+import { IdentityHologram } from '../../components/identity/IdentityHologram';
+import { TiltCard } from '../../components/common/TiltCard';
 
 export const IdentityTwin: React.FC = () => {
   const { identityTwin, setIsCopilotOpen } = useApp();
@@ -34,10 +35,18 @@ export const IdentityTwin: React.FC = () => {
         </Button>
       </div>
 
-      {/* Identity Twin Comparison (Current vs Dream Identity) */}
+      {/* 3D Holographic Identity Visualizer */}
+      <IdentityHologram
+        alignmentScore={identityTwin.alignmentPercentage}
+        driftScore={identityTwin.driftScore}
+        currentArchetype={identityTwin.currentArchetype}
+        dreamArchetype={identityTwin.dreamArchetype}
+      />
+
+      {/* Identity Twin Comparison (Current vs Dream Identity with 3D TiltCards) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Current Identity Box */}
-        <div className="glass-panel p-6 rounded-3xl border border-white/10 space-y-4">
+        <TiltCard className="p-6 space-y-4">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase text-purple-400 tracking-wider">Current Self Baseline</span>
             <Badge variant="glass">Active State</Badge>
@@ -45,7 +54,7 @@ export const IdentityTwin: React.FC = () => {
           <h2 className="text-xl font-extrabold text-white">{identityTwin.currentArchetype}</h2>
 
           <div className="space-y-3 pt-2">
-            <span className="text-xs font-semibold text-slate-400 block">Core Core Values</span>
+            <span className="text-xs font-semibold text-slate-400 block">Core Values</span>
             <div className="flex flex-wrap gap-2">
               {identityTwin.coreValues.map((val, i) => (
                 <Badge key={i} variant="purple">{val}</Badge>
@@ -69,12 +78,10 @@ export const IdentityTwin: React.FC = () => {
               ))}
             </div>
           </div>
-        </div>
+        </TiltCard>
 
         {/* Dream Identity Box */}
-        <div className="glass-panel p-6 rounded-3xl border border-purple-500/30 space-y-4 relative overflow-hidden bg-gradient-to-br from-purple-900/20 to-black">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
-
+        <TiltCard className="p-6 space-y-4 border-purple-500/30 bg-gradient-to-br from-purple-900/20 to-black">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase text-indigo-400 tracking-wider">Dream Archetype Target</span>
             <Badge variant="purple">{identityTwin.alignmentPercentage}% Aligned</Badge>
@@ -106,7 +113,7 @@ export const IdentityTwin: React.FC = () => {
               ))}
             </div>
           </div>
-        </div>
+        </TiltCard>
       </div>
 
       {/* Gap Analysis & AI Insights */}
@@ -124,7 +131,7 @@ export const IdentityTwin: React.FC = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {identityTwin.insights.map((ins) => (
-            <div key={ins.id} className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-2">
+            <div key={ins.id} className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-2 hover:border-purple-500/30 transition-colors">
               <div className="flex items-center justify-between">
                 <span className={`text-[10px] font-bold uppercase tracking-wider ${
                   ins.type === 'positive' ? 'text-emerald-400' : ins.type === 'warning' ? 'text-rose-400' : 'text-amber-400'
@@ -153,7 +160,7 @@ export const IdentityTwin: React.FC = () => {
 
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 pt-2">
           {identityTwin.timeline.map((item, i) => (
-            <div key={i} className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-2 text-center relative">
+            <div key={i} className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-2 text-center relative hover:bg-white/10 transition-colors">
               <span className="text-[10px] font-bold text-purple-400 block">{item.date}</span>
               <p className="text-2xl font-extrabold text-white">{item.alignment}%</p>
               <p className="text-xs text-slate-300 leading-snug">{item.milestone}</p>
