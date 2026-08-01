@@ -1,18 +1,46 @@
+"""
+Supervisor Agent — GrowthOS
+Skeleton router agent. Determines the next agent to invoke based on user input.
+"""
+import logging
 from app.agents.supervisor.router import route_next_agent
-from app.llm.groq_client import groq_llm
+from app.schemas.models import AgentResponse
+from app.utils.helpers import get_utc_now
+
+logger = logging.getLogger(__name__)
+
 
 class SupervisorAgent:
-    def run(self, user_id: str, prompt: str, context: dict | None = None) -> dict:
-        next_step = route_next_agent(prompt)
-        llm_resp = groq_llm.generate(
-            prompt=f"User ({user_id}) request: '{prompt}'. Routing to sub-agent: {next_step}.",
-            system_instruction="You are the GrowthOS Supervisor Agent."
-        )
-        return {
-            "user_id": user_id,
-            "next_step": next_step,
-            "supervisor_summary": llm_resp,
-            "context": context or {}
-        }
+    """Input: User query. Output: Next agent routing."""
+
+    async def execute(self, input_data: dict) -> AgentResponse:
+        """Standardized agent entry point."""
+        logger.info(f"SupervisorAgent.execute() called")
+        query = input_data.get("message", "")
+        
+        try:
+            next_agent = route_next_agent(query)
+            
+            return AgentResponse(
+                success=True,
+                agent="supervisor",
+                timestamp=get_utc_now(),
+                data={"routed_to": next_agent},
+                next_recommended_agent=next_agent,
+            )
+        except Exception as e:
+            logger.error(f"SupervisorAgent.execute() failed: {e}", exc_info=True)
+            return AgentResponse(
+                success=False,
+                agent="supervisor",
+                timestamp=get_utc_now(),
+                data={"error": str(e)},
+            )
+
+    async def route(self, user_id: str, message: str) -> str:
+        """Legacy method — delegates to execute()."""
+        result = await self.execute({"user_id": user_id, "message": message})
+        return result.data.get("routed_to", "conversation") if result.success else "conversation"
+
 
 supervisor_agent = SupervisorAgent()

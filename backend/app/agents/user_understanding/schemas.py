@@ -1,8 +1,11 @@
+"""Pydantic schemas for User Understanding Agent."""
 from pydantic import BaseModel, Field
 from typing import Optional
 
-class UserOnboardingInput(BaseModel):
-    goal: str = Field(min_length=1, max_length=200, description="Target career goal or role")
+
+class UserUnderstandingInput(BaseModel):
+    user_id: str = Field(default="", description="User identifier")
+    goal: str = Field(default="", max_length=200, description="Target career goal or role")
     target_role: Optional[str] = Field(default=None, max_length=200)
     skills: list[str] = Field(default_factory=list)
     interests: list[str] = Field(default_factory=list)
@@ -13,11 +16,16 @@ class UserOnboardingInput(BaseModel):
     preferred_content: list[str] = Field(default_factory=list)
     language: Optional[str] = Field(default="English")
 
-class IdentityTwinAnalysisOutput(BaseModel):
-    identity_score: float = Field(ge=0.0, le=100.0)
-    identity_drift_percentage: float = Field(ge=0.0, le=100.0)
-    key_strengths: list[str]
-    skill_gaps: list[str]
-    strategic_insight: str
-    degraded: bool = False
-    reason: Optional[str] = None
+
+class UserUnderstandingOutput(BaseModel):
+    target_role: str
+    skills: list[str]
+    interests: list[str]
+    learning_style: str = "hands-on"
+    available_time_per_week_hours: int = 5
+    aspirations: str = ""
+    identity_score: float = Field(ge=0.0, le=100.0, default=85.0)
+    identity_drift_percentage: float = Field(ge=0.0, le=100.0, default=12.0)
+    key_strengths: list[str] = Field(default_factory=list)
+    skill_gaps: list[str] = Field(default_factory=list)
+    strategic_insight: Optional[str] = None

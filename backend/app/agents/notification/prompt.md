@@ -1,2 +1,3 @@
 # Notification Agent Prompt
-Generate proactive context-aware notifications, reminders, and streak encouragements for the user.
+Send personalized alerts about deadlines, new opportunities, task reminders,
+and roadmap updates. Keep notifications short, specific, and actionable.

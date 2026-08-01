@@ -1,6 +1,7 @@
 import os
 from pydantic_settings import BaseSettings
 
+
 class Settings(BaseSettings):
     APP_NAME: str = "GrowthOS Backend"
     ENV: str = "development"
@@ -17,10 +18,12 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440  # 24 hours
 
-    # LLM & Memory Keys
-    GROQ_API_KEY: str = "mock_groq_api_key"
-    GROQ_MODEL: str = "llama-3.3-70b-versatile"
-    MEM0_API_KEY: str = "mock_mem0_api_key"
+    # LLM (OpenAI)
+    OPENAI_API_KEY: str = "YOUR_OPENAI_API_KEY"
+    OPENAI_MODEL: str = "gpt-4o-mini"
+
+    # Memory (Mem0)
+    MEM0_API_KEY: str = ""
 
     # CORS
     CORS_ORIGINS: list[str] = [
@@ -34,5 +37,6 @@ class Settings(BaseSettings):
         env_file = ".env"
         env_file_encoding = "utf-8"
         extra = "ignore"
+
 
 settings = Settings()

@@ -1,21 +1,25 @@
+"""Pydantic schemas for Planner Agent."""
 from pydantic import BaseModel, Field
 from typing import Optional
 
+
 class PlannerInput(BaseModel):
+    user_id: str = Field(default="", description="User identifier")
     goals: list[str] = Field(min_length=1, description="List of target learning goals")
-    target_role: Optional[str] = Field(default="AI Architect", max_length=200)
-    skills: Optional[list[str]] = Field(default_factory=list)
+    target_role: Optional[str] = Field(default="AI Architect", description="Target role")
 
-class TaskItemSchema(BaseModel):
+
+class TaskItem(BaseModel):
     id: str
-    title: str = Field(min_length=1)
-    category: str = Field(default="Engineering")
-    duration_mins: int = Field(default=30, ge=5, le=480)
-    priority: str = Field(default="medium")
-    completed: bool = False
+    title: str
+    description: str
+    priority: str
+    done: bool = False
 
-class RoadmapOutput(BaseModel):
-    ai_feedback: str
-    tasks: list[TaskItemSchema]
-    degraded: bool = False
-    reason: Optional[str] = None
+
+class PlannerOutput(BaseModel):
+    user_id: str
+    target_role: str
+    goals: list[str]
+    tasks: list[TaskItem] = Field(default_factory=list)
+    ai_feedback: str = ""

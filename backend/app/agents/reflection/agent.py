@@ -1,136 +1,95 @@
+"""
+Reflection Agent — GrowthOS
+Processes daily reflections, provides AI insights, and updates ML burnout metrics.
+"""
 import logging
-from app.agents.reflection.schemas import ReflectionInput
-from app.agents.reflection.tools import compute_burnout_risk_indicator
-from app.llm.groq_client import groq_llm
+from app.agents.reflection.tools import generate_reflection_insights
 from app.database.repositories.reflection_repository import reflection_repository
-from app.database.repositories.identity_repository import identity_repository
 from app.database.repositories.analytics_repository import analytics_repository
+from app.ml.inference import ml_inference
 from app.memory.memory_manager import memory_manager
+from app.schemas.models import AgentResponse
 from app.utils.helpers import get_utc_now
 
 logger = logging.getLogger(__name__)
 
-def extract_sentiment_scores(notes: str, raise_on_error: bool = False) -> tuple[int, int]:
-    if not notes:
-        return (3, 3)
-
-    prompt = (
-        f"Analyze the following user reflection note: '{notes}'. "
-        f"Estimate their mood_score (1 to 5, where 1 is miserable/burnt out, 5 is joyful/excited) "
-        f"and energy_level (1 to 5, where 1 is exhausted, 5 is fully energized). "
-        f"Return ONLY valid JSON in the format: {{\"mood_score\": int, \"energy_level\": int}}"
-    )
-    result = groq_llm.generate_json(
-        prompt=prompt,
-        system_instruction="You are a sentiment analyzer. Return valid JSON containing mood_score and energy_level numbers from 1 to 5.",
-        raise_on_error=raise_on_error
-    )
-    if isinstance(result, dict) and "mood_score" in result and "energy_level" in result:
-        try:
-            m = max(1, min(5, int(result["mood_score"])))
-            e = max(1, min(5, int(result["energy_level"])))
-            return (m, e)
-        except Exception:
-            pass
-
-    lower_notes = notes.lower()
-    negative_keywords = ["stress", "burnt out", "burnout", "exhaust", "overwhelmed", "tired", "anxious", "depressed", "struggling", "hate", "give up", "hard", "miserable", "drained", "awful", "bad", "quit"]
-    positive_keywords = ["excited", "great", "awesome", "productive", "happy", "loving it", "energized", "fantastic", "good", "amazing"]
-
-    neg_count = sum(1 for kw in negative_keywords if kw in lower_notes)
-    pos_count = sum(1 for kw in positive_keywords if kw in lower_notes)
-
-    if neg_count > pos_count:
-        m_score = max(1, 4 - (neg_count * 2))
-        e_score = max(1, 4 - (neg_count * 2))
-        return (m_score, e_score)
-    elif pos_count > neg_count:
-        return (4, 4)
-
-    return (3, 3)
 
 class ReflectionAgent:
-    async def process_and_save(self, user_id: str, data: dict, raise_on_error: bool = False) -> dict:
-        logger.info(f"ReflectionAgent processing daily reflection for user {user_id}")
+    """Input: Daily reflection data. Output: AI Insights & updated analytics."""
 
-        # Pydantic validation before calling Groq or Mongo
-        validated_input = ReflectionInput(**data)
-        val_dict = validated_input.model_dump()
+    async def execute(self, input_data: dict) -> AgentResponse:
+        """Standardized agent entry point."""
+        logger.info(f"ReflectionAgent.execute() called")
+        user_id = input_data.get("user_id", "")
+        memory_updates = []
+        database_updates = []
 
-        notes = val_dict.get("reflection") or val_dict.get("notes") or ""
-        has_explicit_mood = val_dict.get("mood") is not None or val_dict.get("mood_score") is not None
-        has_explicit_energy = val_dict.get("motivation") is not None or val_dict.get("energy_level") is not None
+        try:
+            # Generate AI insight using LLM
+            insight = await generate_reflection_insights(input_data)
+            
+            # Update ML metrics (burnout, growth)
+            analytics = await analytics_repository.get_analytics_for_user(user_id)
+            tasks_completed = analytics.get("tasks_completed_count", 0) + len(input_data.get("completed_tasks", []))
+            total_hours = analytics.get("total_study_hours", 0.0) + input_data.get("study_hours", 0.0)
+            streak = analytics.get("streak_days", 0) + 1
+            
+            ml_results = ml_inference.run_full_analytics_inference(
+                tasks_completed=tasks_completed,
+                total_hours=total_hours,
+                streak_days=streak,
+                mood_score=input_data.get("mood_score", 4),
+                energy_level=input_data.get("energy_level", 4)
+            )
+            
+            # Save reflection doc
+            doc = {
+                **input_data,
+                "ai_insight": insight,
+                "risk_level": ml_results["burnout_risk_level"],
+                "burnout_risk_score": ml_results["burnout_risk_score"],
+            }
+            reflection = await reflection_repository.create_reflection(user_id, doc)
+            database_updates.append("reflections")
 
-        if not has_explicit_mood or not has_explicit_energy:
-            extracted_mood, extracted_energy = extract_sentiment_scores(notes, raise_on_error=raise_on_error)
-            mood_score = val_dict.get("mood") or val_dict.get("mood_score") or extracted_mood
-            energy_level = val_dict.get("motivation") or val_dict.get("energy_level") or extracted_energy
-        else:
-            mood_score = val_dict.get("mood") or val_dict.get("mood_score") or 3
-            energy_level = val_dict.get("motivation") or val_dict.get("energy_level") or 3
+            # Update analytics DB
+            await analytics_repository.update_analytics(
+                user_id=user_id,
+                add_hours=input_data.get("study_hours", 0.0),
+                completed_count=len(input_data.get("completed_tasks", [])),
+                risk_level=ml_results["burnout_risk_level"]
+            )
+            database_updates.append("analytics")
 
-        study_hours = float(val_dict.get("study_hours") or 2.5)
-        completed_tasks = val_dict.get("completed_tasks") or []
-        skipped_tasks = val_dict.get("skipped_tasks") or []
-        timestamp = get_utc_now()
+            # If burnout risk is high, save a memory fact
+            if ml_results["burnout_risk_level"] == "high":
+                fact = f"User showed high burnout risk on {get_utc_now()[:10]} due to low mood and energy."
+                memory_manager.save_user_fact(user_id, fact, {"type": "burnout_risk"})
+                memory_updates.append(fact)
 
-        risk = compute_burnout_risk_indicator(mood_score, energy_level, study_hours)
+            return AgentResponse(
+                success=True,
+                agent="reflection",
+                timestamp=get_utc_now(),
+                data=reflection,
+                memory_updates=memory_updates,
+                database_updates=database_updates,
+                next_recommended_agent="notification",
+            )
+        except Exception as e:
+            logger.error(f"ReflectionAgent.execute() failed: {e}", exc_info=True)
+            return AgentResponse(
+                success=False,
+                agent="reflection",
+                timestamp=get_utc_now(),
+                data={"error": str(e)},
+            )
 
-        prompt = (
-            f"Daily Reflection Notes: '{notes}'. Mood score: {mood_score}/5. Motivation: {energy_level}/5. "
-            f"Study hours logged: {study_hours}h. Completed tasks count: {len(completed_tasks)}. Skipped tasks: {len(skipped_tasks)}. "
-            f"Calculated burnout risk level: {risk}. "
-            f"Provide 2-3 sentences of empathetic, actionable productivity advice."
-        )
+    async def process_and_save(self, user_id: str, data: dict) -> dict:
+        """Legacy method — delegates to execute()."""
+        input_data = {"user_id": user_id, **data}
+        result = await self.execute(input_data)
+        return result.data if result.success else {}
 
-        ai_insight = groq_llm.generate(
-            prompt=prompt,
-            system_instruction="You are GrowthOS Reflection Agent. Provide encouraging, supportive productivity and burnout coaching.",
-            raise_on_error=raise_on_error
-        )
-
-        degraded = getattr(groq_llm, "last_degraded", False)
-        reason = getattr(groq_llm, "last_degraded_reason", None)
-
-        reflection_doc = {
-            "user_id": user_id,
-            "reflection": notes,
-            "notes": notes,
-            "mood": mood_score,
-            "mood_score": mood_score,
-            "motivation": energy_level,
-            "energy_level": energy_level,
-            "study_hours": study_hours,
-            "completed_tasks": completed_tasks,
-            "skipped_tasks": skipped_tasks,
-            "timestamp": timestamp,
-            "risk_level": risk,
-            "ai_insight": ai_insight,
-            "degraded": degraded,
-        }
-        if degraded and reason:
-            reflection_doc["reason"] = reason
-
-        saved_reflection = await reflection_repository.create_reflection(user_id, reflection_doc)
-
-        await analytics_repository.update_analytics(
-            user_id=user_id,
-            add_hours=study_hours,
-            completed_count=len(completed_tasks),
-            risk_level=risk.lower()
-        )
-
-        await identity_repository.update_identity(user_id, {
-            "last_reflection_at": timestamp,
-            "burnout_risk_level": risk
-        })
-
-        # Mem0 call wrapped safely
-        memory_manager.save_user_fact(
-            user_id,
-            f"Log reflection note (risk: {risk}): '{notes[:60]}'."
-        )
-
-        return saved_reflection
 
 reflection_agent = ReflectionAgent()

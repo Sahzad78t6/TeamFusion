@@ -1,35 +1,65 @@
+"""
+Memory Manager for GrowthOS
+Integrates with Mem0 for long-term vector memory, with local dict fallback.
+"""
 import logging
 from app.config.settings import settings
-from app.memory.store import add_memory
-from app.memory.retrieve import search_memories
-from app.memory.update import update_memory_entry
+from app.memory.store import add_memory, get_memories
 
 logger = logging.getLogger(__name__)
 
 class MemoryManager:
     def __init__(self):
         self.api_key = settings.MEM0_API_KEY
+        self.client = None
+        
+        if self.api_key and self.api_key != "YOUR_MEM0_API_KEY":
+            try:
+                from mem0 import Memory
+                mem0_config = {
+                    "llm": {"provider": "openai", "config": {"api_key": settings.OPENAI_API_KEY}},
+                    "embedder": {"provider": "openai", "config": {"api_key": settings.OPENAI_API_KEY}},
+                }
+                self.client = Memory.from_config(mem0_config)
+                logger.info("Mem0 client initialized successfully.")
+            except Exception as e:
+                logger.error(f"Failed to initialize Mem0 client: {e}")
+        else:
+            logger.info("Mem0 API key not found. Using local fallback memory store.")
 
-    def save_user_fact(self, user_id: str, fact: str, metadata: dict | None = None):
-        try:
-            logger.info(f"Saving user memory fact for {user_id}: {fact}")
-            return add_memory(user_id, fact, metadata)
-        except Exception as e:
-            logger.warning(f"Mem0 save_user_fact warning (non-blocking failure): {e}")
-            return {"text": fact, "metadata": metadata or {}, "status": "memory_error"}
+    def save_user_fact(self, user_id: str, fact: str, metadata: dict | None = None) -> bool:
+        """Save a long-term fact to memory."""
+        logger.info(f"Saving fact for user {user_id}: {fact}")
+        
+        if self.client:
+            try:
+                self.client.add(fact, user_id=user_id, metadata=metadata)
+                return True
+            except Exception as e:
+                logger.error(f"Mem0 add failed: {e}. Falling back to local store.")
+        
+        # Fallback
+        add_memory(user_id, fact, metadata)
+        return True
 
-    def get_user_facts(self, user_id: str, query: str = "") -> list[dict]:
-        try:
-            return search_memories(user_id, query)
-        except Exception as e:
-            logger.warning(f"Mem0 get_user_facts warning (non-blocking failure): {e}")
-            return []
+    def get_user_context(self, user_id: str, query: str = "") -> list[dict]:
+        """Retrieve relevant context for a user."""
+        if self.client:
+            try:
+                if query:
+                    results = self.client.search(query, user_id=user_id)
+                else:
+                    results = self.client.get_all(user_id=user_id)
+                
+                # Format Mem0 results
+                if results:
+                    return [{"text": r.get("memory", ""), "metadata": r.get("metadata", {})} for r in results]
+                return []
+            except Exception as e:
+                logger.error(f"Mem0 retrieve failed: {e}. Falling back to local store.")
+                
+        # Fallback
+        return get_memories(user_id)
 
-    def update_fact(self, user_id: str, old_keyword: str, new_fact: str) -> bool:
-        try:
-            return update_memory_entry(user_id, old_keyword, new_fact)
-        except Exception as e:
-            logger.warning(f"Mem0 update_fact warning (non-blocking failure): {e}")
-            return False
 
 memory_manager = MemoryManager()

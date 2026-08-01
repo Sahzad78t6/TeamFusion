@@ -1,53 +1,53 @@
+"""Tools for the Opportunity Agent."""
 import os
-import csv
-import logging
-from app.utils.helpers import generate_uuid
-from app.exceptions import GrowthOSError
+import random
+from app.llm.provider import llm_provider
 
-logger = logging.getLogger(__name__)
+PROMPT_PATH = os.path.join(os.path.dirname(__file__), "prompt.md")
+SYSTEM = open(PROMPT_PATH).read() if os.path.exists(PROMPT_PATH) else ""
 
-CSV_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../ml/datasets/opportunities.csv"))
+# Static dataset for MVP matching
+STATIC_OPPORTUNITIES = [
+    {"id": "opp_001", "type": "hackathon", "title": "AI Innovation Hackathon", "skills_required": ["Python", "Machine Learning", "AI"]},
+    {"id": "opp_002", "type": "internship", "title": "Software Engineering Intern", "skills_required": ["Python", "React", "TypeScript"]},
+    {"id": "opp_003", "type": "open-source", "title": "Contribute to LangChain", "skills_required": ["Python", "LLMs"]},
+    {"id": "opp_004", "type": "event", "title": "Tech Leadership Summit", "skills_required": ["Leadership", "System Design"]},
+]
 
-def find_matched_opportunities(role: str = "", user_skills: list[str] | None = None, goal: str = "", experience: str = "", raise_on_error: bool = False) -> list[dict]:
-    user_skills_set = {s.lower().strip() for s in (user_skills or ["python", "ai", "fastapi"])}
-    query = (role + " " + goal).lower()
-    results = []
 
-    if not os.path.exists(CSV_PATH):
-        logger.error(f"Opportunities dataset missing at {CSV_PATH}")
-        if raise_on_error:
-            raise FileNotFoundError(f"Opportunities dataset missing at {CSV_PATH}")
+async def match_opportunities(identity: dict) -> list[dict]:
+    """Match opportunities using LLM filtering or deterministic fallback."""
+    target_role = identity.get("target_role", "Software Engineer")
+    skills = identity.get("skills", ["Python"])
+    
+    prompt = (
+        f"Filter and rank these opportunities for a candidate targeting '{target_role}' "
+        f"with skills {skills}. Return JSON list under key 'opportunities', each with "
+        f"'id', 'title', 'type', and 'match_reason'.\n\nOpportunities: {STATIC_OPPORTUNITIES}"
+    )
+    
+    result = llm_provider.generate_json(prompt, system_instruction=SYSTEM)
+    if result and result.get("opportunities"):
+        return result["opportunities"]
 
-    if os.path.exists(CSV_PATH):
-        try:
-            with open(CSV_PATH, mode="r", encoding="utf-8") as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    opp_skills = [s.lower().strip() for s in row.get("skills_required", "").split(",")]
-                    matched = sum(1 for s in opp_skills if any(u in s or s in u for u in user_skills_set))
-                    total = max(len(opp_skills), 1)
-                    skill_score = matched / total
+    # Deterministic fallback: simple keyword intersection
+    user_skills_lower = {s.lower() for s in skills}
+    matched = []
+    for opp in STATIC_OPPORTUNITIES:
+        req_skills_lower = {s.lower() for s in opp["skills_required"]}
+        if user_skills_lower.intersection(req_skills_lower):
+            matched.append({
+                "id": opp["id"],
+                "title": opp["title"],
+                "type": opp["type"],
+                "match_reason": f"Matches your skills in {', '.join(user_skills_lower.intersection(req_skills_lower))}.",
+            })
+            
+    if not matched:
+        # Fallback to random if no exact match (MVP behavior)
+        sampled = random.sample(STATIC_OPPORTUNITIES, min(2, len(STATIC_OPPORTUNITIES)))
+        for s in sampled:
+            s["match_reason"] = f"Good general opportunity for {target_role}."
+        return sampled
 
-                    title_desc = (row.get("title", "") + " " + row.get("description", "")).lower()
-                    query_score = 0.2 if any(w in title_desc for w in query.split() if len(w) > 2) else 0.0
-
-                    base_score = float(row.get("min_relevance_score", 0.85))
-                    final_score = round(min(0.99, max(0.70, base_score * 0.7 + skill_score * 0.2 + query_score)), 2)
-
-                    results.append({
-                        "id": row.get("id") or generate_uuid(),
-                        "title": row.get("title", "AI Opportunity"),
-                        "company": row.get("company", "GrowthOS Partner"),
-                        "location": row.get("location", "Remote"),
-                        "type": row.get("type", "job"),
-                        "relevance_score": final_score,
-                        "description": row.get("description", ""),
-                        "url": row.get("url", "https://growthos.ai")
-                    })
-        except Exception as e:
-            logger.error(f"Failed to parse opportunities.csv ({e}).")
-            if raise_on_error:
-                raise GrowthOSError(f"Failed to parse opportunities dataset: {e}")
-
-    results.sort(key=lambda x: x["relevance_score"], reverse=True)
-    return results
+    return matched

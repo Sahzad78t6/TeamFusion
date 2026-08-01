@@ -1,23 +1,23 @@
+"""Pydantic schemas for Notification Agent."""
 from pydantic import BaseModel, Field
 from typing import Optional
 
-class NotificationInput(BaseModel):
-    user_id: str = Field(min_length=1)
-    streak: Optional[int] = Field(default=1, ge=0)
-    latest_task: Optional[str] = Field(default="")
-    risk_level: Optional[str] = Field(default="low")
-    opportunity_title: Optional[str] = Field(default="")
 
-class NotificationItemSchema(BaseModel):
+class NotificationInput(BaseModel):
+    user_id: str = Field(default="", description="User identifier")
+    event_type: str = Field(default="general", description="Trigger event type")
+    message: Optional[str] = None
+    risk_level: Optional[str] = None
+
+
+class NotificationItem(BaseModel):
     id: str
-    user_id: str
-    title: str = Field(min_length=1)
-    message: str = Field(min_length=1)
-    type: str
-    read: bool = False
-    created_at: str
+    title: str
+    body: str
+    category: str
+    is_read: bool = False
+
 
 class NotificationOutput(BaseModel):
-    notifications: list[NotificationItemSchema]
-    degraded: bool = False
-    reason: Optional[str] = None
+    user_id: str
+    notifications: list[NotificationItem] = Field(default_factory=list)

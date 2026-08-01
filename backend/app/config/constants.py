@@ -8,6 +8,7 @@ COLLECTION_REFLECTIONS = "reflections"
 COLLECTION_OPPORTUNITIES = "opportunities"
 COLLECTION_ANALYTICS = "analytics"
 COLLECTION_NOTIFICATIONS = "notifications"
+COLLECTION_MEMORIES = "memories"
 
 # Agent Names
 AGENT_SUPERVISOR = "supervisor"

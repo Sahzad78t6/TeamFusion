@@ -1,3 +1,6 @@
-def format_reflection_summary(notes: str, risk_level: str) -> str:
-    summary_notes = notes[:60] + "..." if len(notes) > 60 else notes
-    return f"Reflection ({risk_level}): '{summary_notes}'"
+"""Utility functions for Reflection Agent."""
+
+
+def check_extreme_burnout(risk_level: str, mood_score: int) -> bool:
+    """Determine if burnout risk is extremely high requiring urgent notification."""
+    return risk_level.lower() == "high" and mood_score <= 2

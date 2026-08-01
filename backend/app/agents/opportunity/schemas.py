@@ -1,23 +1,19 @@
+"""Pydantic schemas for Opportunity Agent."""
 from pydantic import BaseModel, Field
-from typing import Optional
+
 
 class OpportunityInput(BaseModel):
-    role: str = Field(min_length=1, max_length=200)
-    user_skills: Optional[list[str]] = Field(default_factory=list)
-    goal: Optional[str] = Field(default="")
-    experience: Optional[str] = Field(default="Intermediate")
+    user_id: str = Field(default="", description="User identifier")
 
-class OpportunityItemSchema(BaseModel):
+
+class MatchedOpportunity(BaseModel):
     id: str
-    title: str = Field(min_length=1)
-    company: str
-    location: str
+    title: str
     type: str
-    relevance_score: float = Field(ge=0.0, le=1.0)
-    description: str
-    url: str
+    match_reason: str
 
-class OpportunityMatchOutput(BaseModel):
-    opportunities: list[OpportunityItemSchema]
-    degraded: bool = False
-    reason: Optional[str] = None
+
+class OpportunityOutput(BaseModel):
+    user_id: str
+    opportunities: list[MatchedOpportunity] = Field(default_factory=list)
+    ai_feedback: str = ""

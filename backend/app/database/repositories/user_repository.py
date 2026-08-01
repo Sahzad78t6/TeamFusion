@@ -41,4 +41,16 @@ class UserRepository:
                     return user
             return None
 
+    async def save_profile(self, user_id: str, profile_data: dict) -> dict:
+        doc = {"user_id": user_id, **profile_data, "updated_at": get_utc_now()}
+        collection = get_collection(COLLECTION_USERS)
+        if collection is not None:
+            await collection.update_one({"id": user_id}, {"$set": doc})
+        else:
+            mock_store = get_mock_collection(COLLECTION_USERS)
+            for user in mock_store:
+                if user.get("id") == user_id:
+                    user.update(doc)
+        return doc
+
 user_repository = UserRepository()
