@@ -26,6 +26,8 @@ class ReflectionRepository:
         collection = get_collection(COLLECTION_REFLECTIONS)
         if collection is not None:
             await collection.insert_one(doc)
+            # PyMongo adds a BSON ObjectId in-place; it is an internal DB field, not API data.
+            doc.pop('_id', None)
         else:
             mock_store = get_mock_collection(COLLECTION_REFLECTIONS)
             mock_store.append(doc)

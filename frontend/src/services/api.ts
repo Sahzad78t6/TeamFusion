@@ -269,7 +269,14 @@ export async function chatWithCopilotApi(token: string, message: string): Promis
     headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ message }),
   });
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.detail || 'The AI Copilot could not complete that request.');
-  return data;
+  const raw = await response.text();
+  let data: CopilotResponse | { detail?: string } = {};
+  try {
+    data = raw ? JSON.parse(raw) : {};
+  } catch {
+    throw new Error(`The AI Copilot returned an unexpected server response (${response.status}).`);
+  }
+  const errorDetail = 'detail' in data ? data.detail : undefined;
+  if (!response.ok) throw new Error(errorDetail || 'The AI Copilot could not complete that request.');
+  return data as CopilotResponse;
 }

@@ -5,8 +5,10 @@ from app.database.repositories.analytics_repository import analytics_repository
 from app.services.planner_service import planner_service
 from app.services.recommendation_service import recommendation_service
 from app.services.notification_service import notification_service
+from app.utils.serialization import clean_for_api
 
 logger = logging.getLogger(__name__)
+
 
 class DashboardService:
     async def get_dashboard_summary(self, user_id: str) -> dict:
@@ -18,21 +20,14 @@ class DashboardService:
         recommendations = await recommendation_service.get_recommendations(user_id)
         notifications = await notification_service.get_user_notifications(user_id)
 
-        user_name = user.get("name") or "GrowthOS Builder"
-        user_email = user.get("email") or ""
-        goal = identity.get("goal") or identity.get("target_role") or "AI Leader"
-        streak = analytics.get("streak_days", 1)
-        completed_tasks = analytics.get("tasks_completed_count", 0)
-        growth_score = analytics.get("growth_score", 85.0)
-
-        return {
+        return clean_for_api({
             "user_id": user_id,
-            "user_name": user_name,
-            "user_email": user_email,
-            "goal": goal,
-            "learning_streak": streak,
-            "completed_tasks_count": completed_tasks,
-            "growth_score": growth_score,
+            "user_name": user.get("name") or "GrowthOS Builder",
+            "user_email": user.get("email") or "",
+            "goal": identity.get("goal") or identity.get("target_role") or "AI Leader",
+            "learning_streak": analytics.get("streak_days", 1),
+            "completed_tasks_count": analytics.get("tasks_completed_count", 0),
+            "growth_score": analytics.get("growth_score", 85.0),
             "analytics": analytics,
             "identity_twin": identity,
             "roadmap": plans[0] if plans else None,
@@ -40,7 +35,8 @@ class DashboardService:
             "recommendations": recommendations.get("recommendations", []),
             "top_recommendations": recommendations.get("recommendations", [])[:3],
             "notifications": notifications.get("notifications", []),
-            "unread_notifications_count": notifications.get("unread_count", 0)
-        }
+            "unread_notifications_count": notifications.get("unread_count", 0),
+        })
+
 
 dashboard_service = DashboardService()
