@@ -14,7 +14,7 @@ export interface AuthTokenResponse {
   user: AuthUserResponse;
 }
 
-export async function signupApi(name: string, email: string, password: str): Promise<AuthTokenResponse> {
+export async function signupApi(name: string, email: string, password: string): Promise<AuthTokenResponse> {
   const response = await fetch(`${API_BASE_URL}/auth/signup`, {
     method: 'POST',
     headers: {
@@ -32,7 +32,7 @@ export async function signupApi(name: string, email: string, password: str): Pro
   return data;
 }
 
-export async function loginApi(email: string, password: str): Promise<AuthTokenResponse> {
+export async function loginApi(email: string, password: string): Promise<AuthTokenResponse> {
   const response = await fetch(`${API_BASE_URL}/auth/login`, {
     method: 'POST',
     headers: {

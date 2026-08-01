@@ -1,4 +1,10 @@
 import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Load .env file explicitly
+env_path = Path(__file__).resolve().parent.parent.parent / ".env"
+load_dotenv(dotenv_path=env_path)
 
 try:
     from pydantic_settings import BaseSettings
@@ -16,9 +22,9 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15  # 15 Minutes Expiry
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7     # 7 Days Expiry
 
-    # Supabase Credentials (loaded from environment or .env)
+    # Supabase Credentials
     SUPABASE_URL: str = os.getenv("SUPABASE_URL", "https://episyanpewjwwcvgjlyg.supabase.co")
-    SUPABASE_KEY: str = os.getenv("SUPABASE_KEY", "YOUR_SUPABASE_SERVICE_OR_ANON_KEY")
+    SUPABASE_KEY: str = os.getenv("SUPABASE_KEY", "sb_publishable_-ZBmRlt-Xt90B7SFVHNbjw_AvR2AoWr")
 
 
 settings = Settings()

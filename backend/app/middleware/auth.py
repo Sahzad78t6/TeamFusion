@@ -3,7 +3,6 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.utils.jwt import decode_token
 from app.database.supabase import supabase
 from app.schemas.user import UserResponse
-from app.services.auth_service import _MEMORY_USERS_DB
 
 security = HTTPBearer()
 
@@ -34,17 +33,17 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         
     user_record = None
 
-    # Check Supabase first
+    # Check Supabase
     try:
         response = supabase.table("users").select("*").eq("id", user_id).execute()
         if response.data and len(response.data) > 0:
             user_record = response.data[0]
-    except Exception:
-        pass
-
-    # Check memory DB fallback
-    if not user_record and user_id in _MEMORY_USERS_DB:
-        user_record = _MEMORY_USERS_DB[user_id]
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error while authenticating user: {str(e)}",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
     if not user_record:
         raise HTTPException(
