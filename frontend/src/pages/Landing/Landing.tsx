@@ -71,7 +71,7 @@ export const Landing: React.FC = () => {
           <a href="#features" className="hover:text-white transition-colors">Features</a>
           <a href="#how-it-works" className="hover:text-white transition-colors">How It Works</a>
           <a href="#architecture" className="hover:text-white transition-colors">Architecture</a>
-          <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
+
         </div>
 
         <div className="flex items-center gap-3">
@@ -277,77 +277,6 @@ export const Landing: React.FC = () => {
         </div>
       </section>
 
-      {/* Pricing Section */}
-      <section id="pricing" className="py-20 px-6 max-w-6xl mx-auto z-10 relative text-center">
-        <Badge variant="amber">Simple Pricing</Badge>
-        <h2 className="text-3xl sm:text-4xl font-bold text-white mt-3">Invest in Your Potential</h2>
-        <p className="text-slate-400 text-sm mt-2 max-w-md mx-auto">Choose the tier that accelerates your personal growth trajectory.</p>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12 text-left">
-          {[
-            {
-              name: 'Starter',
-              price: '$0',
-              desc: 'For individuals starting their self-improvement journey.',
-              features: ['1 Identity Twin', 'Basic Daily Curation', 'Manual Task Planner', 'Standard Analytics'],
-              button: 'Get Started Free',
-              variant: 'outline' as const,
-            },
-            {
-              name: 'Pro Growth',
-              price: '$19',
-              desc: 'For ambitious engineers, founders, and lifelong learners.',
-              features: ['Real-time Identity Drift Tracking', 'Full Agentic Curation Engine', 'AI Copilot Assistant', 'Burnout & Risk Models', 'Mem0 Memory Sync'],
-              button: 'Start Pro Trial',
-              variant: 'glow' as const,
-              popular: true,
-            },
-            {
-              name: 'Founders / Enterprise',
-              price: '$49',
-              desc: 'For executive leaders & high-performance builders.',
-              features: ['1-on-1 VC Mentor Matching', 'Priority Opportunity Radar', 'Custom LangGraph Swarm', 'Dedicated Support'],
-              button: 'Join Founder Tier',
-              variant: 'outline' as const,
-            },
-          ].map((plan, i) => (
-            <TiltCard
-              key={i}
-              className={`p-6 relative flex flex-col justify-between ${
-                plan.popular ? 'border-purple-500/50 shadow-2xl shadow-purple-950/50 scale-105' : ''
-              }`}
-            >
-              {plan.popular && (
-                <div className="absolute -top-3 right-6 px-3 py-1 bg-gradient-to-r from-purple-600 to-pink-600 text-[10px] font-extrabold text-white rounded-full uppercase tracking-wider shadow-md">
-                  Most Popular
-                </div>
-              )}
-              <div>
-                <h3 className="text-lg font-bold text-white">{plan.name}</h3>
-                <p className="text-xs text-slate-400 mt-1">{plan.desc}</p>
-                <div className="my-6">
-                  <span className="text-4xl font-extrabold text-white">{plan.price}</span>
-                  <span className="text-slate-400 text-xs"> / month</span>
-                </div>
-                <div className="space-y-2.5 text-xs text-slate-300">
-                  {plan.features.map((feat, j) => (
-                    <div key={j} className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-purple-400 shrink-0" />
-                      <span>{feat}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <NavLink to="/onboarding" className="mt-8 block">
-                <Button variant={plan.variant} className="w-full">
-                  {plan.button}
-                </Button>
-              </NavLink>
-            </TiltCard>
-          ))}
-        </div>
-      </section>
 
       {/* Footer */}
       <footer className="border-t border-white/10 py-12 px-6 max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6 text-xs text-slate-500 relative z-10">
