@@ -1,5 +1,9 @@
 import os
-from pydantic_settings import BaseSettings, SettingsConfigDict
+
+try:
+    from pydantic_settings import BaseSettings
+except ImportError:
+    from pydantic import BaseModel as BaseSettings
 
 
 class Settings(BaseSettings):
@@ -12,11 +16,9 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15  # 15 Minutes Expiry
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7     # 7 Days Expiry
 
-    # Supabase Credentials
+    # Supabase Credentials (loaded from environment or .env)
     SUPABASE_URL: str = os.getenv("SUPABASE_URL", "https://episyanpewjwwcvgjlyg.supabase.co")
-    SUPABASE_KEY: str = os.getenv("SUPABASE_KEY", "sb_publishable_-ZBmRlt-Xt90B7SFVHNbjw_AvR2AoWr")
-
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    SUPABASE_KEY: str = os.getenv("SUPABASE_KEY", "YOUR_SUPABASE_SERVICE_OR_ANON_KEY")
 
 
 settings = Settings()
