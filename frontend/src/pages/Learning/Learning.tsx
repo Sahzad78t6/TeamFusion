@@ -53,7 +53,7 @@ export const Learning: React.FC = () => {
   const handleTriggerCuratorAgent = async () => {
     if (!authToken) return;
     setIsLoading(true);
-    setStatusMsg('Learning Curator Agent executing with Gemini AI & MongoDB Atlas...');
+    setStatusMsg('Learning Curator Agent executing with Groq AI & MongoDB Atlas...');
     try {
       const data = await refreshRecommendationsApi(authToken);
       if (data && data.recommendations) {
@@ -127,7 +127,7 @@ export const Learning: React.FC = () => {
             onClick={handleTriggerCuratorAgent}
             leftIcon={isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
           >
-            {isLoading ? 'Curating with Gemini AI...' : 'Run Learning Curator Agent'}
+            {isLoading ? 'Curating with Groq AI...' : 'Run Learning Curator Agent'}
           </Button>
 
           {/* Search Input */}

@@ -18,7 +18,8 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440  # 24 hours
 
     # LLM & Memory Keys
-    GEMINI_API_KEY: str = "mock_gemini_api_key"
+    GROQ_API_KEY: str = "mock_groq_api_key"
+    GROQ_MODEL: str = "llama-3.3-70b-versatile"
     MEM0_API_KEY: str = "mock_mem0_api_key"
 
     # CORS

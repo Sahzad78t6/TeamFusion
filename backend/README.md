@@ -1,6 +1,6 @@
 # GrowthOS Backend API
 
-GrowthOS Backend is built with **FastAPI**, **Motor (MongoDB)**, **LangGraph**, **Mem0**, **Google Gemini**, and **Scikit-Learn ML Inference**.
+GrowthOS Backend is built with **FastAPI**, **Motor (MongoDB)**, **LangGraph**, **Mem0**, **Groq (llama-3.3-70b-versatile)**, and **Scikit-Learn ML Inference**.
 
 ## Architecture Overview
 
@@ -9,7 +9,7 @@ GrowthOS Backend is built with **FastAPI**, **Motor (MongoDB)**, **LangGraph**, 
 - **`app/agents/`**: Autonomous AI agents (`supervisor`, `user_understanding`, `planner`, `learning_curator`, `opportunity`, `reflection`, `notification`).
 - **`app/graph/`**: Multi-agent orchestration with LangGraph workflow engine.
 - **`app/memory/`**: Mem0 memory management engine (store, retrieve, update).
-- **`app/llm/`**: Gemini API wrapper, prompt templates, output parsers, and embeddings.
+- **`app/llm/`**: Groq API wrapper, prompt templates, output parsers, and embeddings.
 - **`app/ml/`**: Machine Learning inference engines (`growth_predictor`, `burnout_predictor`) with saved models.
 - **`app/database/`**: Motor MongoDB async driver integration & collection repositories.
 - **`app/services/`**: Business logic services decoupling APIs from persistence & agent workflows.

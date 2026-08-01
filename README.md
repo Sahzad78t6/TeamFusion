@@ -164,7 +164,7 @@ Frontend Dashboard
 
 ## LLM
 
-- Gemini
+- Groq (llama-3.3-70b-versatile)
 
 ## Deployment
 

@@ -3,7 +3,7 @@ from app.agents.planner.tools import generate_ai_roadmap
 from app.agents.learning_curator.tools import generate_ai_recommendations
 from app.agents.opportunity.agent import opportunity_agent
 from app.agents.reflection.tools import compute_burnout_risk_indicator
-from app.llm.gemini import gemini_llm
+from app.llm.groq_client import groq_llm
 
 def supervisor_node(state: GraphState) -> GraphState:
     state["history"].append("supervisor_node")
@@ -31,6 +31,6 @@ def opportunity_node(state: GraphState) -> GraphState:
 def reflection_node(state: GraphState) -> GraphState:
     state["history"].append("reflection_node")
     risk = compute_burnout_risk_indicator(4, 4)
-    insight = gemini_llm.generate(prompt=f"Reflection notes: {state['input_text']}. Risk: {risk}")
+    insight = groq_llm.generate(prompt=f"Reflection notes: {state['input_text']}. Risk: {risk}")
     state["output"] = insight
     return state

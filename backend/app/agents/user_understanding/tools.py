@@ -1,5 +1,5 @@
 import logging
-from app.llm.gemini import gemini_llm
+from app.llm.groq_client import groq_llm
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +17,7 @@ def generate_identity_twin_analysis(onboarding_data: dict) -> dict:
         f"'identity_score' (number 70-98), 'identity_drift_percentage' (number 5-25), 'key_strengths' (list of strings), 'skill_gaps' (list of strings), 'strategic_insight' (string)."
     )
 
-    result = gemini_llm.generate_json(
+    result = groq_llm.generate_json(
         prompt=prompt,
         system_instruction="You are GrowthOS User Understanding Agent. Analyze developer identity and return clean JSON."
     )

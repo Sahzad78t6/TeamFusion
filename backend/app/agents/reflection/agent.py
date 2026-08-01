@@ -1,6 +1,6 @@
 import logging
 from app.agents.reflection.tools import compute_burnout_risk_indicator
-from app.llm.gemini import gemini_llm
+from app.llm.groq_client import groq_llm
 from app.database.repositories.reflection_repository import reflection_repository
 from app.database.repositories.identity_repository import identity_repository
 from app.database.repositories.analytics_repository import analytics_repository
@@ -29,7 +29,7 @@ class ReflectionAgent:
             f"Provide 2-3 sentences of empathetic, actionable productivity advice."
         )
         
-        ai_insight = gemini_llm.generate(
+        ai_insight = groq_llm.generate(
             prompt=prompt,
             system_instruction="You are GrowthOS Reflection Agent. Provide encouraging, supportive productivity and burnout coaching."
         )

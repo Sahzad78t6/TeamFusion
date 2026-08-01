@@ -1,6 +1,6 @@
 import logging
 from app.utils.helpers import generate_uuid
-from app.llm.gemini import gemini_llm
+from app.llm.groq_client import groq_llm
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +16,7 @@ def generate_ai_roadmap(goals: list[str], target_role: str = "AI Architect", ski
         f"'tasks' (list of objects with fields: 'id' (string), 'title' (string), 'category' (string), 'duration_mins' (integer), 'priority' (string: 'high'/'medium'/'low'), 'completed' (boolean))."
     )
 
-    result = gemini_llm.generate_json(
+    result = groq_llm.generate_json(
         prompt=prompt,
         system_instruction="You are GrowthOS Planner Agent. Generate structured daily learning roadmaps."
     )
@@ -29,7 +29,7 @@ def generate_ai_roadmap(goals: list[str], target_role: str = "AI Architect", ski
                 task["completed"] = False
         return result
 
-    # Structured fallback tasks if Gemini API key or JSON format fails
+    # Structured fallback tasks if Groq API key or JSON format fails
     fallback_tasks = [
         {
             "id": generate_uuid(),

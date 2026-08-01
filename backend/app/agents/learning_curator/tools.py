@@ -1,6 +1,6 @@
 import logging
 from app.utils.helpers import generate_uuid
-from app.llm.gemini import gemini_llm
+from app.llm.groq_client import groq_llm
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ def generate_ai_recommendations(target_role: str = "AI Engineer", skills: list[s
         f"'rating' (number 4.7-5.0), 'match_score' (number 0.88-0.99), 'progress_percentage' (number 0-100), 'tags' (list of 3 strings)."
     )
 
-    result = gemini_llm.generate_json(
+    result = groq_llm.generate_json(
         prompt=prompt,
         system_instruction="You are GrowthOS Learning Curator Agent. Return clean JSON array of 6 curated learning resources."
     )

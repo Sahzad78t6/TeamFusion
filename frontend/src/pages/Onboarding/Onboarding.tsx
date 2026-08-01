@@ -314,7 +314,7 @@ export const Onboarding: React.FC = () => {
             rightIcon={isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
           >
             {isSubmitting
-              ? 'Calibrating Twin via Gemini...'
+              ? 'Calibrating Twin via Groq...'
               : step === totalSteps
               ? 'Calibrate & Launch Dashboard'
               : 'Continue'}
