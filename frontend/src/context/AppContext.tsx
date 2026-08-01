@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import {
   UserProfile,
   IdentityTwin,
@@ -19,9 +19,15 @@ import {
   mockNotifications,
   mockAnalytics,
 } from '../utils/dummyData';
+import { AuthUserResponse, getMeApi, logoutApi } from '../services/api';
 
 interface AppContextType {
   user: UserProfile;
+  setUser: React.Dispatch<React.SetStateAction<UserProfile>>;
+  authToken: string | null;
+  setAuthToken: (token: string | null) => void;
+  setAuthSession: (accessToken: string, refreshToken: string, authUser: AuthUserResponse) => void;
+  logout: () => void;
   identityTwin: IdentityTwin;
   learningResources: LearningResource[];
   opportunities: Opportunity[];
@@ -47,6 +53,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserProfile>(mockUser);
+  const [authToken, setAuthTokenState] = useState<string | null>(() => localStorage.getItem('growthos_access_token'));
   const [identityTwin, setIdentityTwin] = useState<IdentityTwin>(mockIdentityTwin);
   const [learningResources, setLearningResources] = useState<LearningResource[]>(mockLearningResources);
   const [opportunities, setOpportunities] = useState<Opportunity[]>(mockOpportunities);
@@ -57,6 +64,58 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isCopilotOpen, setIsCopilotOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  const setAuthToken = (token: string | null) => {
+    setAuthTokenState(token);
+    if (token) {
+      localStorage.setItem('growthos_access_token', token);
+    } else {
+      localStorage.removeItem('growthos_access_token');
+      localStorage.removeItem('growthos_refresh_token');
+    }
+  };
+
+  const setAuthSession = (accessToken: string, refreshToken: string, authUser: AuthUserResponse) => {
+    setAuthTokenState(accessToken);
+    localStorage.setItem('growthos_access_token', accessToken);
+    localStorage.setItem('growthos_refresh_token', refreshToken);
+
+    setUser((prev) => ({
+      ...prev,
+      id: authUser.id,
+      name: authUser.name || prev.name,
+      email: authUser.email || prev.email,
+    }));
+  };
+
+  const logout = async () => {
+    if (authToken) {
+      try {
+        await logoutApi(authToken);
+      } catch (e) {
+        // Suppress
+      }
+    }
+    setAuthToken(null);
+  };
+
+  // Fetch current user from backend API on mount if token exists
+  useEffect(() => {
+    if (authToken) {
+      getMeApi(authToken)
+        .then((me) => {
+          setUser((prev) => ({
+            ...prev,
+            id: me.id,
+            name: me.name || prev.name,
+            email: me.email || prev.email,
+          }));
+        })
+        .catch(() => {
+          // Token expired
+        });
+    }
+  }, []);
 
   const toggleTask = (taskId: string) => {
     setTasks((prev) =>
@@ -101,6 +160,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     <AppContext.Provider
       value={{
         user,
+        setUser,
+        authToken,
+        setAuthToken,
+        setAuthSession,
+        logout,
         identityTwin,
         learningResources,
         opportunities,

@@ -1,23 +1,39 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Zap, Mail, Lock, User, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Zap, Mail, Lock, User, ArrowRight, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Button } from '../../components/common/Button';
+import { signupApi } from '../../services/api';
+import { useApp } from '../../context/AppContext';
 
 export const Signup: React.FC = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const { setAuthSession } = useApp();
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
     setIsLoading(true);
-    setTimeout(() => {
+
+    try {
+      // Call Supabase FastAPI Signup Endpoint
+      const res = await signupApi(name, email, password);
+      
+      // Store session in AppContext and localStorage
+      setAuthSession(res.access_token, res.refresh_token, res.user);
+      
       setIsLoading(false);
       navigate('/onboarding');
-    }, 1000);
+    } catch (err: any) {
+      setIsLoading(false);
+      setErrorMessage(err.message || 'Signup failed. Please try again.');
+    }
   };
 
   return (
@@ -44,6 +60,13 @@ export const Signup: React.FC = () => {
             <h2 className="text-2xl font-bold text-white">Create Your Account</h2>
             <p className="text-xs text-slate-400 mt-1">Start curating your future self in under 2 minutes.</p>
           </div>
+
+          {errorMessage && (
+            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{errorMessage}</span>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1">
@@ -98,7 +121,7 @@ export const Signup: React.FC = () => {
               isLoading={isLoading}
               rightIcon={<ArrowRight className="w-4 h-4" />}
             >
-              Continue to Onboarding Wizard
+              Sign Up & Create Identity
             </Button>
           </form>
 
@@ -125,7 +148,7 @@ export const Signup: React.FC = () => {
               </div>
               <div className="flex items-start gap-3">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                <span><strong>Multi-Agent Curation</strong> recommends high-ROI courses, books & papers.</span>
+                <span><strong>Supabase Cloud DB</strong> securely manages your encrypted user profile & vector states.</span>
               </div>
               <div className="flex items-start gap-3">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />

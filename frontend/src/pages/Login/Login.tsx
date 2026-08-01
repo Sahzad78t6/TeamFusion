@@ -1,22 +1,38 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Zap, Mail, Lock, ArrowRight, Github, Chrome } from 'lucide-react';
+import { Zap, Mail, Lock, ArrowRight, Github, Chrome, AlertCircle } from 'lucide-react';
 import { Button } from '../../components/common/Button';
+import { loginApi } from '../../services/api';
+import { useApp } from '../../context/AppContext';
 
 export const Login: React.FC = () => {
   const [email, setEmail] = useState('alex.rivera@growthos.ai');
   const [password, setPassword] = useState('••••••••••••');
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const { setAuthSession } = useApp();
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
     setIsLoading(true);
-    setTimeout(() => {
+
+    try {
+      // Call Supabase FastAPI Login Endpoint
+      const res = await loginApi(email, password);
+
+      // Store session in AppContext and localStorage
+      setAuthSession(res.access_token, res.refresh_token, res.user);
+
       setIsLoading(false);
       navigate('/dashboard');
-    }, 1000);
+    } catch (err: any) {
+      setIsLoading(false);
+      setErrorMessage(err.message || 'Login failed. Invalid email or password.');
+    }
   };
 
   return (
@@ -44,6 +60,13 @@ export const Login: React.FC = () => {
             <h2 className="text-2xl font-bold text-white">Welcome Back</h2>
             <p className="text-xs text-slate-400 mt-1">Sign in to resume your AI growth trajectory.</p>
           </div>
+
+          {errorMessage && (
+            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{errorMessage}</span>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1">
