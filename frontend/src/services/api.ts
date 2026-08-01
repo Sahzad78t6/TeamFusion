@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 export interface AuthUserResponse {
   id: string;
@@ -14,8 +14,19 @@ export interface AuthTokenResponse {
   user: AuthUserResponse;
 }
 
+async function safeFetch(url: string, options: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, options);
+  } catch (err: any) {
+    if (err instanceof TypeError || err.message?.includes('fetch')) {
+      throw new Error('Unable to connect to GrowthOS backend server. Please verify the backend API is running on port 8000.');
+    }
+    throw err;
+  }
+}
+
 export async function signupApi(name: string, email: string, password: string): Promise<AuthTokenResponse> {
-  const response = await fetch(`${API_BASE_URL}/auth/signup`, {
+  const response = await safeFetch(`${API_BASE_URL}/auth/signup`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -33,7 +44,7 @@ export async function signupApi(name: string, email: string, password: string): 
 }
 
 export async function loginApi(email: string, password: string): Promise<AuthTokenResponse> {
-  const response = await fetch(`${API_BASE_URL}/auth/login`, {
+  const response = await safeFetch(`${API_BASE_URL}/auth/login`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -51,7 +62,7 @@ export async function loginApi(email: string, password: string): Promise<AuthTok
 }
 
 export async function getMeApi(token: string): Promise<AuthUserResponse> {
-  const response = await fetch(`${API_BASE_URL}/auth/me`, {
+  const response = await safeFetch(`${API_BASE_URL}/auth/me`, {
     method: 'GET',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -69,7 +80,7 @@ export async function getMeApi(token: string): Promise<AuthUserResponse> {
 }
 
 export async function logoutApi(token: string): Promise<void> {
-  await fetch(`${API_BASE_URL}/auth/logout`, {
+  await safeFetch(`${API_BASE_URL}/auth/logout`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
