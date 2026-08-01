@@ -16,7 +16,10 @@ import {
   Award,
   ChevronRight,
   Play,
+  Sun,
+  Moon,
 } from 'lucide-react';
+import { useTheme } from '../../context/ThemeContext';
 import { Button } from '../../components/common/Button';
 import { Badge } from '../../components/common/Badge';
 import { ParticleCanvas } from '../../components/common/ParticleCanvas';
@@ -24,6 +27,7 @@ import { CustomCursor } from '../../components/common/CustomCursor';
 import { TiltCard } from '../../components/common/TiltCard';
 
 export const Landing: React.FC = () => {
+  const { theme, toggleTheme } = useTheme();
   const [typedText, setTypedText] = useState('');
   const fullText = 'The AI That Curates Your Future.';
 
@@ -38,7 +42,7 @@ export const Landing: React.FC = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#090a0f] text-slate-100 selection:bg-purple-500 selection:text-white overflow-x-hidden font-sans relative">
+    <div className="min-h-screen bg-[#090a0f] text-slate-100 selection:bg-purple-500 selection:text-white overflow-x-hidden font-sans relative transition-colors duration-300">
       {/* WebGL / Canvas Particle Mesh Background */}
       <ParticleCanvas />
 
@@ -53,7 +57,7 @@ export const Landing: React.FC = () => {
       </div>
 
       {/* Top Navbar */}
-      <nav className="sticky top-0 z-40 flex items-center justify-between px-6 py-4 border-b border-white/10 bg-[#090a0f]/80 backdrop-blur-xl max-w-7xl mx-auto rounded-b-2xl mt-2">
+      <nav className="sticky top-0 z-40 flex items-center justify-between px-6 py-4 border-b border-white/10 bg-[#090a0f]/80 backdrop-blur-xl max-w-7xl mx-auto rounded-b-2xl mt-2 transition-colors">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/30">
             <Zap className="w-5 h-5 text-white animate-pulse" />
@@ -71,6 +75,15 @@ export const Landing: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-3">
+          {/* Theme Toggle Button */}
+          <button
+            onClick={toggleTheme}
+            className="p-2 text-slate-400 hover:text-white rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-colors"
+            title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} mode`}
+          >
+            {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-300" /> : <Moon className="w-4 h-4 text-indigo-400" />}
+          </button>
+
           <NavLink to="/login">
             <Button variant="ghost" size="sm">Sign In</Button>
           </NavLink>
