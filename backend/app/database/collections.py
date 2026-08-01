@@ -1,0 +1,10 @@
+# GrowthOS MongoDB Collections
+
+COLLECTION_USERS = "users"
+COLLECTION_IDENTITY_TWINS = "identity_twins"
+COLLECTION_LEARNING_PLANS = "learning_plans"
+COLLECTION_RECOMMENDATIONS = "recommendations"
+COLLECTION_OPPORTUNITIES = "opportunities"
+COLLECTION_REFLECTIONS = "reflections"
+COLLECTION_NOTIFICATIONS = "notifications"
+COLLECTION_ANALYTICS = "analytics"

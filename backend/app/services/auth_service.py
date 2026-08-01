@@ -2,7 +2,8 @@ import uuid
 import logging
 from datetime import datetime, timezone
 from fastapi import HTTPException, status
-from app.database.supabase import supabase
+from app.database.mongodb import get_database
+from app.database.collections import COLLECTION_USERS
 from app.schemas.user import UserSignup, UserLogin, UserResponse
 from app.schemas.auth import TokenResponse, RefreshTokenResponse, MessageResponse
 from app.utils.security import get_password_hash, verify_password
@@ -12,24 +13,32 @@ from app.utils.jwt import create_access_token, create_refresh_token, decode_toke
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-
 class AuthService:
     @staticmethod
     async def signup(user_in: UserSignup) -> TokenResponse:
         """
-        User Signup Service:
-        - Check duplicate email in Supabase
+        User Signup Service (MongoDB):
+        - Check duplicate email in MongoDB
         - Hash password with bcrypt
-        - Create user record in Supabase users table
+        - Create user document in MongoDB users collection
         - Issue Access & Refresh Tokens
         """
         email_clean = user_in.email.lower().strip()
         logger.info(f"Incoming signup request for: {email_clean}")
 
-        # Check existing user in Supabase
+        db = get_database()
+        if db is None:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Database connection not initialized"
+            )
+            
+        users_collection = db[COLLECTION_USERS]
+
+        # Check existing user in MongoDB
         try:
-            res = supabase.table("users").select("id").eq("email", email_clean).execute()
-            if res.data and len(res.data) > 0:
+            existing_user = await users_collection.find_one({"email": email_clean})
+            if existing_user:
                 logger.warning(f"Signup failed: Email {email_clean} already exists.")
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -56,6 +65,7 @@ class AuthService:
 
         now_iso = datetime.now(timezone.utc).isoformat()
         new_user_record = {
+            "_id": user_id,
             "id": user_id,
             "name": user_in.name.strip(),
             "email": email_clean,
@@ -65,22 +75,19 @@ class AuthService:
             "updated_at": now_iso
         }
 
-        # Insert into Supabase users table
+        # Insert into MongoDB users collection
         try:
-            insert_res = supabase.table("users").insert(new_user_record).execute()
-            if not insert_res.data or len(insert_res.data) == 0:
-                raise Exception("Insert operation returned empty data.")
-            new_user_record = insert_res.data[0]
+            await users_collection.insert_one(new_user_record)
             logger.info(f"User {email_clean} inserted successfully into database.")
         except Exception as e:
             logger.error(f"Database error during user insert: {repr(e)}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Database insert error: {str(e)}. (Ensure Supabase users table exists and RLS allows inserts)"
+                detail=f"Database insert error: {str(e)}"
             )
 
         user_response = UserResponse(
-            id=str(new_user_record["id"]),
+            id=user_id,
             name=new_user_record["name"],
             email=new_user_record["email"],
             created_at=new_user_record.get("created_at"),
@@ -97,20 +104,28 @@ class AuthService:
     @staticmethod
     async def login(credentials: UserLogin) -> TokenResponse:
         """
-        User Login Service:
-        - Verify email existence in Supabase
+        User Login Service (MongoDB):
+        - Verify email existence in MongoDB
         - Verify bcrypt password hash
         - Issue new Access Token & Refresh Token
         """
         email_clean = credentials.email.lower().strip()
         logger.info(f"Incoming login request for: {email_clean}")
+        
+        db = get_database()
+        if db is None:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Database connection not initialized"
+            )
+            
+        users_collection = db[COLLECTION_USERS]
         user_record = None
 
-        # Check Supabase
+        # Check MongoDB
         try:
-            res = supabase.table("users").select("*").eq("email", email_clean).execute()
-            if res.data and len(res.data) > 0:
-                user_record = res.data[0]
+            user_record = await users_collection.find_one({"email": email_clean})
+            if user_record:
                 logger.info(f"User {email_clean} found in database.")
             else:
                 logger.warning(f"Login failed: Email {email_clean} not found.")
@@ -147,15 +162,15 @@ class AuthService:
 
         now_iso = datetime.now(timezone.utc).isoformat()
 
-        # Update refresh token in Supabase
+        # Update refresh token in MongoDB
         try:
-            update_res = supabase.table("users").update({
-                "refresh_token": refresh_token,
-                "updated_at": now_iso
-            }).eq("id", user_id).execute()
+            update_res = await users_collection.update_one(
+                {"id": user_id},
+                {"$set": {"refresh_token": refresh_token, "updated_at": now_iso}}
+            )
             
-            if not update_res.data or len(update_res.data) == 0:
-                logger.warning("Update operation returned empty data, but user might be updated.")
+            if update_res.modified_count == 0:
+                logger.warning("Update operation modified 0 documents, but user might be updated.")
             else:
                 logger.info(f"Refresh token updated for {email_clean}.")
         except Exception as e:
@@ -215,15 +230,25 @@ class AuthService:
     @staticmethod
     async def logout(user_id: str) -> MessageResponse:
         """
-        User Logout Service:
+        User Logout Service (MongoDB):
         - Invalidate refresh token in database
         """
         logger.info(f"Incoming logout request for user ID: {user_id}")
+        
+        db = get_database()
+        if db is None:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Database connection not initialized"
+            )
+            
+        users_collection = db[COLLECTION_USERS]
+        
         try:
-            update_res = supabase.table("users").update({
-                "refresh_token": None,
-                "updated_at": datetime.now(timezone.utc).isoformat()
-            }).eq("id", user_id).execute()
+            await users_collection.update_one(
+                {"id": user_id},
+                {"$set": {"refresh_token": None, "updated_at": datetime.now(timezone.utc).isoformat()}}
+            )
             
             logger.info(f"Successfully logged out user ID: {user_id}")
         except Exception as e:

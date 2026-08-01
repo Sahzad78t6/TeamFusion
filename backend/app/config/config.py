@@ -22,9 +22,9 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15  # 15 Minutes Expiry
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7     # 7 Days Expiry
 
-    # Supabase Credentials
-    SUPABASE_URL: str = os.getenv("SUPABASE_URL", "https://episyanpewjwwcvgjlyg.supabase.co")
-    SUPABASE_KEY: str = os.getenv("SUPABASE_KEY", "sb_publishable_-ZBmRlt-Xt90B7SFVHNbjw_AvR2AoWr")
+    # MongoDB Credentials
+    MONGODB_URI: str = os.getenv("MONGODB_URI", "mongodb://localhost:27017")
+    DATABASE_NAME: str = "growthos"
 
 
 settings = Settings()

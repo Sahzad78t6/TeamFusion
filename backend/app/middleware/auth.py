@@ -1,16 +1,16 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.utils.jwt import decode_token
-from app.database.supabase import supabase
+from app.database.mongodb import get_database
+from app.database.collections import COLLECTION_USERS
 from app.schemas.user import UserResponse
 
 security = HTTPBearer()
 
-
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> UserResponse:
     """
     FastAPI Dependency Injection to authenticate protected routes.
-    Extracts Bearer JWT Access token, decodes payload, verifies user in DB, and returns UserResponse.
+    Extracts Bearer JWT Access token, decodes payload, verifies user in MongoDB, and returns UserResponse.
     """
     token = credentials.credentials
     payload = decode_token(token)
@@ -31,13 +31,19 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
             headers={"WWW-Authenticate": "Bearer"},
         )
         
+    db = get_database()
+    if db is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Database connection not initialized"
+        )
+        
+    users_collection = db[COLLECTION_USERS]
     user_record = None
 
-    # Check Supabase
+    # Check MongoDB
     try:
-        response = supabase.table("users").select("*").eq("id", user_id).execute()
-        if response.data and len(response.data) > 0:
-            user_record = response.data[0]
+        user_record = await users_collection.find_one({"id": user_id})
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

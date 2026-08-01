@@ -3,12 +3,22 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config.config import settings
 from app.api.auth import router as auth_router
 
+from contextlib import asynccontextmanager
+from app.database.mongodb import connect_to_mongo, close_mongo_connection
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await connect_to_mongo()
+    yield
+    await close_mongo_connection()
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     description="GrowthOS Agentic AI API — Authentication Module",
     version="1.0.0",
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
+    lifespan=lifespan
 )
 
 # Configure CORS Middleware
