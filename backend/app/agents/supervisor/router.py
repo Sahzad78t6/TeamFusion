@@ -9,7 +9,7 @@ def route_next_agent(user_query: str) -> str:
         return "learning_curator"
     if any(word in query for word in ("job", "opportunity", "career", "internship", "hackathon", "role")):
         return "opportunity"
-    if any(word in query for word in ("reflect", "mood", "journal", "burnout", "check-in", "checkin", "stress")):
+    if any(word in query for word in ("reflect", "reflection", "mood", "journal", "burnout", "burnt out", "check-in", "checkin", "stress", "exhausted", "overwhelmed", "tired", "anxious", "depressed", "struggling", "quit", "feeling")):
         return "reflection"
     if any(word in query for word in ("profile", "onboard", "goal", "identity", "skill gap")):
         return "user_understanding"

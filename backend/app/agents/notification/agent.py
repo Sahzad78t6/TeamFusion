@@ -1,15 +1,17 @@
 import logging
+from app.agents.notification.schemas import NotificationInput
 from app.agents.notification.tools import generate_proactive_notifications
 from app.database.repositories.analytics_repository import analytics_repository
 from app.database.repositories.planner_repository import planner_repository
 from app.database.repositories.opportunity_repository import opportunity_repository
 from app.database.repositories.identity_repository import identity_repository
 from app.database.repositories.notification_repository import notification_repository
+from app.memory.memory_manager import memory_manager
 
 logger = logging.getLogger(__name__)
 
 class NotificationAgent:
-    async def get_and_sync_notifications(self, user_id: str) -> list[dict]:
+    async def get_and_sync_notifications(self, user_id: str, raise_on_error: bool = False) -> list[dict]:
         logger.info(f"NotificationAgent evaluating dynamic notifications for user {user_id}")
         analytics = await analytics_repository.get_analytics_for_user(user_id)
         plans = await planner_repository.get_plans_by_user(user_id)
@@ -18,7 +20,7 @@ class NotificationAgent:
 
         streak = analytics.get("streak_days", 1)
         risk = identity.get("burnout_risk_level") or analytics.get("burnout_risk_level", "low")
-        
+
         latest_task = ""
         if plans and plans[0].get("tasks"):
             uncompleted = [t for t in plans[0]["tasks"] if not t.get("completed")]
@@ -29,7 +31,8 @@ class NotificationAgent:
         if opps_doc and opps_doc.get("opportunities"):
             opp_title = opps_doc["opportunities"][0].get("title", "")
 
-        generated = generate_proactive_notifications(
+        # Pydantic validation
+        validated_input = NotificationInput(
             user_id=user_id,
             streak=streak,
             latest_task=latest_task,
@@ -37,7 +40,23 @@ class NotificationAgent:
             opportunity_title=opp_title
         )
 
+        generated = generate_proactive_notifications(
+            user_id=validated_input.user_id,
+            streak=validated_input.streak,
+            latest_task=validated_input.latest_task,
+            risk_level=validated_input.risk_level,
+            opportunity_title=validated_input.opportunity_title,
+            raise_on_error=raise_on_error
+        )
+
         saved = await notification_repository.save_notifications(user_id, generated)
+
+        # Mem0 call wrapped safely
+        memory_manager.save_user_fact(
+            user_id,
+            f"Evaluated and synced {len(saved)} proactive notifications."
+        )
+
         return saved
 
 notification_agent = NotificationAgent()

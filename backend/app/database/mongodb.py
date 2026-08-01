@@ -17,6 +17,8 @@ logger = logging.getLogger(__name__)
 class MongoDB:
     client: AsyncIOMotorClient | None = None
     db = None
+    is_connected: bool = False
+    connection_error: str | None = None
 
 db_instance = MongoDB()
 
@@ -26,7 +28,6 @@ async def init_collections_indexes():
     if db_instance.db is None:
         return
     try:
-        # Create indexes asynchronously for performance and data integrity
         await db_instance.db[COLLECTION_USERS].create_index("email", unique=True)
         await db_instance.db[COLLECTION_USERS].create_index("id", unique=True)
         await db_instance.db[COLLECTION_IDENTITIES].create_index("user_id", unique=True)
@@ -42,19 +43,29 @@ async def init_collections_indexes():
 
 async def connect_to_mongo():
     try:
-        db_instance.client = AsyncIOMotorClient(settings.MONGODB_URL, serverSelectionTimeoutMS=2000)
+        db_instance.client = AsyncIOMotorClient(settings.MONGODB_URL, serverSelectionTimeoutMS=3000)
         db_instance.db = db_instance.client[settings.MONGODB_DB_NAME]
         await db_instance.client.admin.command('ping')
+        db_instance.is_connected = True
+        db_instance.connection_error = None
         logger.info(f"Connected to MongoDB at {settings.MONGODB_URL} (db: {settings.MONGODB_DB_NAME})")
         await init_collections_indexes()
     except Exception as e:
-        logger.warning(f"MongoDB connection failed ({e}). Falling back to in-memory store mode.")
+        err_msg = str(e)
+        db_instance.is_connected = False
+        db_instance.connection_error = err_msg
         db_instance.client = None
         db_instance.db = None
+        logger.error(
+            f"CRITICAL: MongoDB connection failed ({err_msg}). "
+            f"Please verify Atlas credentials or Network Access IP allowlist (0.0.0.0/0 required for dynamic IP hosts). "
+            f"Falling back to in-memory store mode."
+        )
 
 async def close_mongo_connection():
     if db_instance.client:
         db_instance.client.close()
+        db_instance.is_connected = False
         logger.info("Closed MongoDB connection.")
 
 def get_database():

@@ -1,10 +1,11 @@
 import logging
 from app.utils.helpers import generate_uuid
 from app.llm.groq_client import groq_llm
+from app.exceptions import LLMJSONParseError, LLMUnavailableError
 
 logger = logging.getLogger(__name__)
 
-def generate_ai_roadmap(goals: list[str], target_role: str = "AI Architect", skills: list[str] | None = None) -> dict:
+def generate_ai_roadmap(goals: list[str], target_role: str = "AI Architect", skills: list[str] | None = None, raise_on_error: bool = False) -> dict:
     skills_str = ", ".join(skills or ["Python", "FastAPI", "AI"])
     goals_str = ", ".join(goals) if goals else f"Mastering {target_role}"
 
@@ -18,7 +19,8 @@ def generate_ai_roadmap(goals: list[str], target_role: str = "AI Architect", ski
 
     result = groq_llm.generate_json(
         prompt=prompt,
-        system_instruction="You are GrowthOS Planner Agent. Generate structured daily learning roadmaps."
+        system_instruction="You are GrowthOS Planner Agent. Generate structured daily learning roadmaps.",
+        raise_on_error=raise_on_error
     )
 
     if isinstance(result, dict) and "tasks" in result and isinstance(result["tasks"], list):
@@ -27,13 +29,18 @@ def generate_ai_roadmap(goals: list[str], target_role: str = "AI Architect", ski
                 task["id"] = generate_uuid()
             if "completed" not in task:
                 task["completed"] = False
+        result["degraded"] = False
         return result
 
-    # Structured fallback tasks if Groq API key or JSON format fails
+    if raise_on_error:
+        raise LLMJSONParseError("Planner Agent failed to parse valid JSON roadmap from Groq response.")
+
+    reason = groq_llm.last_degraded_reason or "llm_unavailable"
+    logger.error(f"Planner LLM generation degraded (reason: {reason}).")
     fallback_tasks = [
         {
             "id": generate_uuid(),
-            "title": f"Implement LangGraph Multi-Agent Workflows for {target_role}",
+            "title": f"Implement Autonomous Multi-Agent Workflows for {target_role}",
             "category": "Agentic Architecture",
             "duration_mins": 60,
             "priority": "high",
@@ -41,7 +48,7 @@ def generate_ai_roadmap(goals: list[str], target_role: str = "AI Architect", ski
         },
         {
             "id": generate_uuid(),
-            "title": "Configure Mem0 Vector Memory Caching & Retrieval",
+            "title": "Configure Vector Memory Caching & Retrieval",
             "category": "Memory Systems",
             "duration_mins": 45,
             "priority": "high",
@@ -66,6 +73,8 @@ def generate_ai_roadmap(goals: list[str], target_role: str = "AI Architect", ski
     ]
 
     return {
-        "ai_feedback": f"Roadmap generated for {target_role}. Focus on high-priority agentic architecture modules first.",
-        "tasks": fallback_tasks
+        "ai_feedback": f"Roadmap generated for {target_role}. Focus on high-priority architecture modules first.",
+        "tasks": fallback_tasks,
+        "degraded": True,
+        "reason": reason
     }

@@ -19,8 +19,12 @@ from app.api import (
     health
 )
 
+from app.utils.csv_validator import validate_opportunities_csv
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Validate CSV dataset on startup
+    validate_opportunities_csv()
     # Startup DB connection
     await connect_to_mongo()
     yield

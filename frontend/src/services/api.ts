@@ -1,4 +1,14 @@
-const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || '/api';
+const IS_PROD = (import.meta as any).env?.PROD;
+const VITE_API_URL = (import.meta as any).env?.VITE_API_URL;
+
+if (IS_PROD && !VITE_API_URL) {
+  console.warn(
+    '[GrowthOS Configuration Warning] VITE_API_URL is not set in production build. ' +
+    'API calls will default to relative "/api" which requires a production reverse proxy (e.g. Nginx/Vercel rewrites).'
+  );
+}
+
+const API_BASE_URL = VITE_API_URL || '/api';
 
 export interface AuthUserResponse {
   id: string;
@@ -29,14 +39,25 @@ export interface OnboardingPayload {
 }
 
 async function safeFetch(url: string, options: RequestInit): Promise<Response> {
+  let response: Response;
   try {
-    return await fetch(url, options);
+    response = await fetch(url, options);
   } catch (err: any) {
     if (err instanceof TypeError || err.message?.includes('fetch')) {
-      throw new Error('Unable to connect to GrowthOS backend server. Please verify the backend API is running on port 8000.');
+      throw new Error(
+        `Unable to connect to GrowthOS backend server at ${url}. Please verify backend server is running and VITE_API_URL is set.`
+      );
     }
     throw err;
   }
+
+  if (response.status === 404 && !VITE_API_URL && IS_PROD) {
+    throw new Error(
+      `GrowthOS API Endpoint 404 Not Found (${url}). Please set VITE_API_URL in your environment or deployment platform.`
+    );
+  }
+
+  return response;
 }
 
 export async function signupApi(name: string, email: string, password: string): Promise<AuthTokenResponse> {
