@@ -1,14 +1,13 @@
 const IS_PROD = (import.meta as any).env?.PROD;
 const VITE_API_URL = (import.meta as any).env?.VITE_API_URL;
+const IS_DEV = typeof window !== 'undefined' && (window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1'));
 
-if (IS_PROD && !VITE_API_URL) {
-  console.warn(
-    '[GrowthOS Configuration Warning] VITE_API_URL is not set in production build. ' +
-    'API calls will default to relative "/api" which requires a production reverse proxy (e.g. Nginx/Vercel rewrites).'
-  );
-}
-
-const API_BASE_URL = VITE_API_URL || '/api';
+// Clean and resolve base API URL. If not provided via environment, default based on runtime environment.
+export const API_BASE_URL = VITE_API_URL
+  ? VITE_API_URL.replace(/\/api\/?$/, '').replace(/\/$/, '')
+  : IS_DEV
+  ? 'http://localhost:8000'
+  : 'https://teamfusion-96bi.onrender.com';
 
 export interface AuthUserResponse {
   id: string;
@@ -49,19 +48,55 @@ async function safeFetch(url: string, options: RequestInit): Promise<Response> {
   } catch (err: any) {
     if (err instanceof TypeError || err.message?.includes('fetch')) {
       throw new Error(
-        `Unable to connect to GrowthOS backend server at ${url}. Please verify backend server is running and VITE_API_URL is set.`
+        `Unable to connect to GrowthOS backend server at ${url}. Please verify backend server is running and online.`
       );
     }
     throw err;
   }
 
-  if (response.status === 404 && !VITE_API_URL && IS_PROD) {
-    throw new Error(
-      `GrowthOS API Endpoint 404 Not Found (${url}). Please set VITE_API_URL in your environment or deployment platform.`
-    );
+  return response;
+}
+
+/**
+ * Safely parses an HTTP response.
+ * Inspects content-type, status, and raw text body before JSON parsing to avoid
+ * "Unexpected end of JSON input" errors on 204 No Content, empty bodies, or HTML error pages.
+ */
+async function safeParseResponse<T = any>(response: Response, defaultErrorMessage = 'Request failed'): Promise<T> {
+  const text = await response.text();
+  const trimmed = text ? text.trim() : '';
+
+  if (!trimmed) {
+    if (!response.ok) {
+      throw new Error(`${defaultErrorMessage} (HTTP ${response.status} ${response.statusText || ''})`.trim());
+    }
+    return {} as T;
   }
 
-  return response;
+  const contentType = response.headers.get('content-type') || '';
+  const isJson = contentType.includes('application/json') || trimmed.startsWith('{') || trimmed.startsWith('[');
+
+  if (isJson) {
+    try {
+      const data = JSON.parse(trimmed);
+      if (!response.ok) {
+        const errorDetail = data?.detail || data?.message || `${defaultErrorMessage} (HTTP ${response.status})`;
+        throw new Error(typeof errorDetail === 'string' ? errorDetail : JSON.stringify(errorDetail));
+      }
+      return data as T;
+    } catch (parseErr: any) {
+      if (!response.ok) {
+        throw new Error(trimmed || `${defaultErrorMessage} (HTTP ${response.status})`);
+      }
+      throw new Error(`Failed to parse response: ${parseErr.message}`);
+    }
+  }
+
+  if (!response.ok) {
+    throw new Error(trimmed || `${defaultErrorMessage} (HTTP ${response.status})`);
+  }
+
+  return trimmed as unknown as T;
 }
 
 export async function signupApi(name: string, email: string, password: string): Promise<AuthTokenResponse> {
@@ -73,13 +108,7 @@ export async function signupApi(name: string, email: string, password: string): 
     body: JSON.stringify({ name, email, password }),
   });
 
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.detail || 'Signup failed. Please try again.');
-  }
-
-  return data;
+  return await safeParseResponse<AuthTokenResponse>(response, 'Signup failed. Please try again.');
 }
 
 export async function loginApi(email: string, password: string): Promise<AuthTokenResponse> {
@@ -91,13 +120,7 @@ export async function loginApi(email: string, password: string): Promise<AuthTok
     body: JSON.stringify({ email, password }),
   });
 
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.detail || 'Login failed. Invalid email or password.');
-  }
-
-  return data;
+  return await safeParseResponse<AuthTokenResponse>(response, 'Login failed. Invalid email or password.');
 }
 
 export async function loginWithGoogleApi(payload: { credential?: string; code?: string; redirect_uri?: string }): Promise<AuthTokenResponse> {
@@ -109,13 +132,19 @@ export async function loginWithGoogleApi(payload: { credential?: string; code?: 
     body: JSON.stringify(payload),
   });
 
-  const data = await response.json();
+  return await safeParseResponse<AuthTokenResponse>(response, 'Google sign-in failed.');
+}
 
-  if (!response.ok) {
-    throw new Error(data.detail || 'Google sign-in failed.');
-  }
+export async function claimAuthTicketApi(ticket: string): Promise<AuthTokenResponse> {
+  const response = await safeFetch(`${API_BASE_URL}/auth/claim-ticket`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ ticket }),
+  });
 
-  return data;
+  return await safeParseResponse<AuthTokenResponse>(response, 'Authentication ticket exchange failed.');
 }
 
 export async function getMeApi(token: string): Promise<AuthUserResponse> {
@@ -127,13 +156,7 @@ export async function getMeApi(token: string): Promise<AuthUserResponse> {
     },
   });
 
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.detail || 'Failed to fetch current user.');
-  }
-
-  return data;
+  return await safeParseResponse<AuthUserResponse>(response, 'Failed to fetch current user.');
 }
 
 export async function logoutApi(token: string): Promise<void> {
@@ -157,11 +180,7 @@ export async function submitOnboardingApi(token: string, payload: OnboardingPayl
     body: JSON.stringify(payload),
   });
 
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.detail || 'Failed to save onboarding data.');
-  }
-  return data;
+  return await safeParseResponse(response, 'Failed to save onboarding data.');
 }
 
 export async function getIdentityApi(token: string): Promise<any> {
@@ -173,11 +192,7 @@ export async function getIdentityApi(token: string): Promise<any> {
     },
   });
 
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.detail || 'Failed to fetch user identity.');
-  }
-  return data;
+  return await safeParseResponse(response, 'Failed to fetch user identity.');
 }
 
 // Dashboard Summary API
@@ -190,11 +205,7 @@ export async function getDashboardApi(token: string): Promise<any> {
     },
   });
 
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.detail || 'Failed to fetch dashboard summary.');
-  }
-  return data;
+  return await safeParseResponse(response, 'Failed to fetch dashboard summary.');
 }
 
 // Planner APIs
@@ -208,11 +219,7 @@ export async function createPlanApi(token: string, goals: string[]): Promise<any
     body: JSON.stringify({ date: new Date().toISOString().slice(0, 10), goals }),
   });
 
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.detail || 'Failed to create learning plan.');
-  }
-  return data;
+  return await safeParseResponse(response, 'Failed to create learning plan.');
 }
 
 // Reflection APIs
@@ -226,11 +233,7 @@ export async function createReflectionApi(token: string, reflectionData: any): P
     body: JSON.stringify(reflectionData),
   });
 
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.detail || 'Failed to submit reflection.');
-  }
-  return data;
+  return await safeParseResponse(response, 'Failed to submit reflection.');
 }
 
 // Recommendations API
@@ -243,11 +246,7 @@ export async function getRecommendationsApi(token: string): Promise<any> {
     },
   });
 
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.detail || 'Failed to fetch recommendations.');
-  }
-  return data;
+  return await safeParseResponse(response, 'Failed to fetch recommendations.');
 }
 
 export async function refreshRecommendationsApi(token: string): Promise<any> {
@@ -259,11 +258,7 @@ export async function refreshRecommendationsApi(token: string): Promise<any> {
     },
   });
 
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.detail || 'Failed to trigger Learning Curator Agent.');
-  }
-  return data;
+  return await safeParseResponse(response, 'Failed to trigger Learning Curator Agent.');
 }
 
 // Opportunities API
@@ -276,11 +271,7 @@ export async function getOpportunitiesApi(token: string): Promise<any> {
     },
   });
 
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.detail || 'Failed to fetch opportunities.');
-  }
-  return data;
+  return await safeParseResponse(response, 'Failed to fetch opportunities.');
 }
 
 // Notifications API
@@ -293,11 +284,7 @@ export async function getNotificationsApi(token: string): Promise<any> {
     },
   });
 
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.detail || 'Failed to fetch notifications.');
-  }
-  return data;
+  return await safeParseResponse(response, 'Failed to fetch notifications.');
 }
 
 export async function markNotificationReadApi(token: string, notificationId: string): Promise<any> {
@@ -309,11 +296,7 @@ export async function markNotificationReadApi(token: string, notificationId: str
     },
   });
 
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.detail || 'Failed to mark notification as read.');
-  }
-  return data;
+  return await safeParseResponse(response, 'Failed to mark notification as read.');
 }
 
 export async function markAllNotificationsReadApi(token: string): Promise<any> {
@@ -325,11 +308,7 @@ export async function markAllNotificationsReadApi(token: string): Promise<any> {
     },
   });
 
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.detail || 'Failed to mark all notifications as read.');
-  }
-  return data;
+  return await safeParseResponse(response, 'Failed to mark all notifications as read.');
 }
 
 // Analytics API
@@ -342,11 +321,8 @@ export async function getAnalyticsApi(token: string): Promise<any> {
     },
   });
 
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.detail || 'Failed to fetch analytics.');
-  }
-  return data.data || data;
+  const res = await safeParseResponse(response, 'Failed to fetch analytics.');
+  return res?.data || res;
 }
 
 // Task Toggle API
@@ -360,11 +336,7 @@ export async function toggleTaskApi(token: string, taskId: string, completed: bo
     body: JSON.stringify({ completed }),
   });
 
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.detail || 'Failed to update task completion state.');
-  }
-  return data;
+  return await safeParseResponse(response, 'Failed to update task completion state.');
 }
 
 export async function getPlansApi(token: string): Promise<any> {
@@ -376,11 +348,7 @@ export async function getPlansApi(token: string): Promise<any> {
     },
   });
 
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.detail || 'Failed to fetch planner entries.');
-  }
-  return data;
+  return await safeParseResponse(response, 'Failed to fetch planner entries.');
 }
 
 export async function getReflectionsApi(token: string): Promise<any> {
@@ -392,11 +360,7 @@ export async function getReflectionsApi(token: string): Promise<any> {
     },
   });
 
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.detail || 'Failed to fetch reflections.');
-  }
-  return data;
+  return await safeParseResponse(response, 'Failed to fetch reflections.');
 }
 
 export interface CopilotResponse {
@@ -411,16 +375,8 @@ export async function chatWithCopilotApi(token: string, message: string): Promis
     headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ message }),
   });
-  const raw = await response.text();
-  let data: CopilotResponse | { detail?: string } = {};
-  try {
-    data = raw ? JSON.parse(raw) : {};
-  } catch {
-    throw new Error(`The AI Copilot returned an unexpected server response (${response.status}).`);
-  }
-  const errorDetail = 'detail' in data ? data.detail : undefined;
-  if (!response.ok) throw new Error(errorDetail || 'The AI Copilot could not complete that request.');
-  return data as CopilotResponse;
+
+  return await safeParseResponse<CopilotResponse>(response, 'The AI Copilot could not complete that request.');
 }
 
 async function institutionRequest(token: string, path: string, method = 'GET', body?: unknown): Promise<any> {
@@ -429,27 +385,8 @@ async function institutionRequest(token: string, path: string, method = 'GET', b
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.detail || 'Institution request failed.');
-  return data;
-}
 
-export async function claimAuthTicketApi(ticket: string): Promise<AuthTokenResponse> {
-  const response = await safeFetch(`${API_BASE_URL}/auth/claim-ticket`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ ticket }),
-  });
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.detail || 'Authentication ticket exchange failed.');
-  }
-
-  return data;
+  return await safeParseResponse(response, 'Institution request failed.');
 }
 
 export const getInstitutionAnalyticsApi = (token: string) => institutionRequest(token, '/analytics');
