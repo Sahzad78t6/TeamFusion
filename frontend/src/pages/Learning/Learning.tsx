@@ -1,17 +1,59 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { BookOpen, Bookmark, Heart, Star, Search, ExternalLink, Loader2, Sparkles } from 'lucide-react';
+import { BookOpen, Bookmark, Heart, Star, Search, ExternalLink, Loader2, Sparkles, Target, Zap, Clock, Compass } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { getRecommendationsApi, refreshRecommendationsApi } from '../../services/api';
 
 export const Learning: React.FC = () => {
-  const { learningResources, setLearningResources, toggleBookmarkResource, toggleLikeResource, authToken } = useApp();
+  const { learningResources, setLearningResources, toggleBookmarkResource, toggleLikeResource, authToken, identityTwin } = useApp();
   const [selectedType, setSelectedType] = useState<string>('all');
   const [search, setSearch] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [statusMsg, setStatusMsg] = useState('');
+
+  // Personalization signals
+  const [targetRole, setTargetRole] = useState<string>('');
+  const [primaryGap, setPrimaryGap] = useState<string>('');
+  const [learningStyle, setLearningStyle] = useState<string>('');
+  const [lastCuratedAt, setLastCuratedAt] = useState<string>('');
+
+  const formatTimeAgo = (isoString?: string) => {
+    if (!isoString) return 'Just now';
+    try {
+      const date = new Date(isoString);
+      const diffMs = Date.now() - date.getTime();
+      const diffMins = Math.floor(diffMs / 60000);
+      if (diffMins < 1) return 'Just now';
+      if (diffMins < 60) return `${diffMins}m ago`;
+      const diffHours = Math.floor(diffMins / 60);
+      if (diffHours < 24) return `${diffHours}h ago`;
+      return `${Math.floor(diffHours / 24)}d ago`;
+    } catch {
+      return 'Recently';
+    }
+  };
+
+  const mapResource = (r: any) => ({
+    id: r.id || `rec-${Math.random()}`,
+    title: r.title,
+    type: (r.type || 'course').toLowerCase(),
+    author: r.author || r.provider || r.channel || 'GrowthOS AI Curator',
+    platform: r.platform || r.provider || r.channel || r.source || 'YouTube',
+    duration: r.duration || '20 Mins',
+    difficulty: r.difficulty || 'Intermediate',
+    category: r.category || 'Architecture',
+    rating: r.rating || 4.9,
+    matchScore: r.matchScore || r.match_score || 92,
+    whyRecommended: r.whyRecommended || r.why_recommended || r.reason || 'Personalized match based on your skill gap.',
+    imageUrl: r.imageUrl || r.thumbnail || r.image_url || 'https://images.unsplash.com/photo-1516116211223-48a122638e59?auto=format&fit=crop&w=800&q=80',
+    link: r.link || r.url || '#',
+    tags: r.tags || ['AI'],
+    isBookmarked: false,
+    isLiked: false,
+    progressPercentage: r.progressPercentage ?? r.progress_percentage ?? 0,
+  });
 
   // Fetch recommendations from backend API on mount
   useEffect(() => {
@@ -19,29 +61,16 @@ export const Learning: React.FC = () => {
       setIsLoading(true);
       getRecommendationsApi(authToken)
         .then((data) => {
-          const recs = (data && (data.recommendations || data.resources)) || [];
-          if (recs && recs.length > 0) {
-            setLearningResources(
-              recs.map((r: any) => ({
-                id: r.id || `rec-${Math.random()}`,
-                title: r.title,
-                type: (r.type || 'course').toLowerCase(),
-                author: r.author || r.provider || r.channel || 'GrowthOS AI Curator',
-                platform: r.platform || r.provider || r.channel || r.source || 'YouTube',
-                duration: r.duration || '20 Mins',
-                difficulty: r.difficulty || 'Intermediate',
-                category: 'AI Architecture',
-                rating: r.rating || 4.9,
-                matchScore: r.matchScore || r.match_score || 92,
-                whyRecommended: r.whyRecommended || r.why_recommended || r.reason || 'Personalized match based on your skill gap.',
-                imageUrl: r.imageUrl || r.thumbnail || r.image_url || '',
-                link: r.link || r.url || '#',
-                tags: r.tags || ['AI'],
-                isBookmarked: false,
-                isLiked: false,
-                progressPercentage: r.progressPercentage ?? r.progress_percentage ?? 0,
-              }))
-            );
+          if (data) {
+            if (data.target_role) setTargetRole(data.target_role);
+            if (data.primary_gap) setPrimaryGap(data.primary_gap);
+            if (data.learning_style) setLearningStyle(data.learning_style);
+            if (data.generated_at) setLastCuratedAt(data.generated_at);
+
+            const recs = data.recommendations || data.resources || [];
+            if (recs.length > 0) {
+              setLearningResources(recs.map(mapResource));
+            }
           }
         })
         .catch((err) => {
@@ -56,38 +85,39 @@ export const Learning: React.FC = () => {
   const handleTriggerCuratorAgent = async () => {
     if (!authToken || isLoading) return;
     setIsLoading(true);
-    setStatusMsg('AI Curator is searching and personalizing resources...');
+    setStatusMsg('Analyzing your current skill gaps...');
+
+    const step1Timer = setTimeout(() => {
+      setStatusMsg('Searching personalized resources from YouTube & Web...');
+    }, 1000);
+
+    const step2Timer = setTimeout(() => {
+      setStatusMsg('Ranking the best matches for your target role...');
+    }, 2200);
+
     try {
       const data = await refreshRecommendationsApi(authToken);
-      const recs = (data && (data.recommendations || data.resources)) || [];
-      if (recs && recs.length > 0) {
-        setLearningResources(
-          recs.map((r: any) => ({
-            id: r.id || `rec-${Math.random()}`,
-            title: r.title,
-            type: (r.type || 'course').toLowerCase(),
-            author: r.author || r.provider || r.channel || 'GrowthOS AI Curator',
-            platform: r.platform || r.provider || r.channel || r.source || 'YouTube',
-            duration: r.duration || '20 Mins',
-            difficulty: r.difficulty || 'Intermediate',
-            category: 'AI Architecture',
-            rating: r.rating || 4.9,
-            matchScore: r.matchScore || r.match_score || 92,
-            whyRecommended: r.whyRecommended || r.why_recommended || r.reason || 'Personalized match based on your skill gap.',
-            imageUrl: r.imageUrl || r.thumbnail || r.image_url || '',
-            link: r.link || r.url || '#',
-            tags: r.tags || ['AI'],
-            isBookmarked: false,
-            isLiked: false,
-            progressPercentage: r.progressPercentage ?? r.progress_percentage ?? 0,
-          }))
-        );
-        setStatusMsg('✓ Agent completed! Real search results & personalized rankings saved.');
-        setTimeout(() => setStatusMsg(''), 4000);
-      } else {
-        setStatusMsg('No matching learning resources found for your current skill gap.');
+      clearTimeout(step1Timer);
+      clearTimeout(step2Timer);
+
+      if (data) {
+        if (data.target_role) setTargetRole(data.target_role);
+        if (data.primary_gap) setPrimaryGap(data.primary_gap);
+        if (data.learning_style) setLearningStyle(data.learning_style);
+        if (data.generated_at) setLastCuratedAt(data.generated_at);
+
+        const recs = data.recommendations || data.resources || [];
+        if (recs.length > 0) {
+          setLearningResources(recs.map(mapResource));
+          setStatusMsg(`✓ Agent completed! Curated ${recs.length} personalized resources ready.`);
+          setTimeout(() => setStatusMsg(''), 5000);
+        } else {
+          setStatusMsg('No matching learning resources found for your current skill gap.');
+        }
       }
     } catch (err: any) {
+      clearTimeout(step1Timer);
+      clearTimeout(step2Timer);
       console.error('Learning curator execution error:', err);
       setStatusMsg(err.message || 'Failed to trigger agent.');
     } finally {
@@ -114,6 +144,10 @@ export const Learning: React.FC = () => {
     return matchesType && matchesSearch;
   });
 
+  const activeRole = targetRole || identityTwin.dreamArchetype || 'AI & Systems Engineer';
+  const activeGap = primaryGap || 'System Architecture';
+  const activeStyle = learningStyle || 'Practical & Visual';
+
   return (
     <div className="space-y-8 pb-12">
       {/* Header */}
@@ -124,7 +158,9 @@ export const Learning: React.FC = () => {
             <Badge variant="cyan">{learningResources.length} Curated Resources</Badge>
           </div>
           <h1 className="text-3xl font-extrabold text-white mt-2">Learning Curation</h1>
-          <p className="text-xs text-slate-400">High-ROI knowledge curated by Learning Curator Agent & stored in MongoDB Atlas.</p>
+          <p className="text-xs text-slate-400">
+            Personalized learning paths curated by Learning Curator Agent & stored in MongoDB Atlas.
+          </p>
         </div>
 
         <div className="flex items-center gap-3 w-full md:w-auto">
@@ -152,9 +188,38 @@ export const Learning: React.FC = () => {
         </div>
       </div>
 
+      {/* Personalized Signals Card */}
+      <div className="glass-panel p-4 rounded-2xl border border-white/10 flex flex-wrap items-center justify-between gap-4 text-xs">
+        <div className="flex items-center gap-6 flex-wrap">
+          <div className="flex items-center gap-2">
+            <Target className="w-4 h-4 text-purple-400" />
+            <span className="text-slate-400">Target Role:</span>
+            <span className="text-white font-semibold">{activeRole}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Compass className="w-4 h-4 text-cyan-400" />
+            <span className="text-slate-400">Priority Gap:</span>
+            <span className="text-white font-semibold">{activeGap}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Zap className="w-4 h-4 text-amber-400" />
+            <span className="text-slate-400">Learning Style:</span>
+            <span className="text-white font-semibold capitalize">{activeStyle}</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 text-slate-400 text-[11px]">
+          <Clock className="w-3.5 h-3.5 text-slate-500" />
+          <span>Last curated: {formatTimeAgo(lastCuratedAt)}</span>
+        </div>
+      </div>
+
+      {/* Status progression banner */}
       {statusMsg && (
         <div className="p-3 bg-purple-500/10 border border-purple-500/30 rounded-xl text-xs text-purple-300 flex items-center justify-between">
-          <span>{statusMsg}</span>
+          <div className="flex items-center gap-2">
+            {isLoading && <Loader2 className="w-3.5 h-3.5 animate-spin text-purple-400" />}
+            <span>{statusMsg}</span>
+          </div>
         </div>
       )}
 

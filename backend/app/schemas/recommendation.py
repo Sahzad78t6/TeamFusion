@@ -42,6 +42,10 @@ class RecommendationResponse(BaseModel):
     resources: List[RecommendationItem] = Field(default_factory=list)
     generated_at: Optional[str] = None
     target_role: Optional[str] = None
+    primary_gap: Optional[str] = None
+    learning_style: Optional[str] = None
+    context_hash: Optional[str] = None
+    curation_run_id: Optional[str] = None
     ai_feedback: Optional[str] = None
 
     class Config:

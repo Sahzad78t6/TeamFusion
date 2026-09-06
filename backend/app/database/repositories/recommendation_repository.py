@@ -8,13 +8,19 @@ class RecommendationRepository:
         user_id: str,
         recommendations: list[dict],
         target_role: str = "Machine Learning Engineer",
+        primary_gap: str = "",
+        context_hash: str = "",
+        curation_run_id: str = "",
         ai_feedback: str = ""
     ) -> dict:
         doc = {
             "user_id": user_id,
+            "curation_run_id": curation_run_id,
+            "target_role": target_role,
+            "primary_gap": primary_gap,
+            "context_hash": context_hash,
             "recommendations": recommendations,
             "resources": recommendations,
-            "target_role": target_role,
             "ai_feedback": ai_feedback or f"Curated {len(recommendations)} personalized resources for your learning goals.",
             "generated_at": get_utc_now()
         }

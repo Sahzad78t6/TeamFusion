@@ -117,6 +117,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     }
     setAuthToken(null);
+    setUser(emptyUser);
+    setIdentityTwin(emptyIdentityTwin);
+    setLearningResources([]);
+    setTasks([]);
+    setReflections([]);
+    setNotifications([]);
+    setAnalytics(emptyAnalytics);
+    setOpportunities([]);
+    setSearchQuery('');
   };
 
   const refreshDashboard = async () => {
