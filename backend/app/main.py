@@ -1,7 +1,11 @@
+import logging
 import urllib.parse
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, APIRouter
-from fastapi.responses import RedirectResponse
+from fastapi import FastAPI, APIRouter, Request
+from fastapi.responses import RedirectResponse, JSONResponse
+from fastapi.exceptions import ResponseValidationError
+
+logger = logging.getLogger(__name__)
 
 from app.config.settings import settings
 from app.database.mongodb import connect_to_mongo, close_mongo_connection
@@ -51,6 +55,22 @@ app = FastAPI(
 # Setup Middleware
 setup_cors(app)
 app.add_middleware(LoggingMiddleware)
+
+@app.exception_handler(ResponseValidationError)
+async def response_validation_exception_handler(request: Request, exc: ResponseValidationError):
+    logger.error(f"Response serialization error on {request.url}: {exc.errors()}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Backend response serialization error.", "errors": [str(e) for e in exc.errors()]}
+    )
+
+@app.exception_handler(Exception)
+async def general_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Unhandled exception on {request.url}: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "An internal server error occurred while processing the request.", "error": str(exc)}
+    )
 
 # Group all routers under /api
 api_router = APIRouter(prefix="/api")

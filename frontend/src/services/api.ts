@@ -41,14 +41,27 @@ export interface OnboardingPayload {
   language?: string;
 }
 
+export class ApiError extends Error {
+  code: string;
+  status?: number;
+
+  constructor(message: string, code: string, status?: number) {
+    super(message);
+    this.name = 'ApiError';
+    this.code = code;
+    this.status = status;
+  }
+}
+
 async function safeFetch(url: string, options: RequestInit): Promise<Response> {
   let response: Response;
   try {
     response = await fetch(url, options);
   } catch (err: any) {
     if (err instanceof TypeError || err.message?.includes('fetch')) {
-      throw new Error(
-        `Unable to connect to GrowthOS backend server at ${url}. Please verify backend server is running and online.`
+      throw new ApiError(
+        `Unable to connect to GrowthOS backend server at ${url}. Please verify backend server is running and online.`,
+        'NETWORK_ERROR'
       );
     }
     throw err;
@@ -61,14 +74,38 @@ async function safeFetch(url: string, options: RequestInit): Promise<Response> {
  * Safely parses an HTTP response.
  * Inspects content-type, status, and raw text body before JSON parsing to avoid
  * "Unexpected end of JSON input" errors on 204 No Content, empty bodies, or HTML error pages.
+ * Classifies HTTP statuses into distinct error types (AUTH_ERROR, FORBIDDEN, NOT_FOUND, VALIDATION_ERROR, SERVER_ERROR, SERVICE_UNAVAILABLE).
  */
 async function safeParseResponse<T = any>(response: Response, defaultErrorMessage = 'Request failed'): Promise<T> {
   const text = await response.text();
   const trimmed = text ? text.trim() : '';
 
+  let code = 'UNKNOWN_ERROR';
+  let defaultStatusMessage = defaultErrorMessage;
+
+  if (response.status === 401) {
+    code = 'AUTH_ERROR';
+    defaultStatusMessage = 'Your session has expired. Please sign in again.';
+  } else if (response.status === 403) {
+    code = 'FORBIDDEN';
+    defaultStatusMessage = 'You are not authorized to perform this action.';
+  } else if (response.status === 404) {
+    code = 'NOT_FOUND';
+    defaultStatusMessage = 'Learning Curator endpoint was not found.';
+  } else if (response.status === 422) {
+    code = 'VALIDATION_ERROR';
+    defaultStatusMessage = 'Invalid Learning Curator request.';
+  } else if (response.status === 500) {
+    code = 'SERVER_ERROR';
+    defaultStatusMessage = 'Learning Curator encountered a server error.';
+  } else if (response.status === 503) {
+    code = 'SERVICE_UNAVAILABLE';
+    defaultStatusMessage = 'Learning services are temporarily unavailable.';
+  }
+
   if (!trimmed) {
     if (!response.ok) {
-      throw new Error(`${defaultErrorMessage} (HTTP ${response.status} ${response.statusText || ''})`.trim());
+      throw new ApiError(`${defaultStatusMessage} (HTTP ${response.status})`, code, response.status);
     }
     return {} as T;
   }
@@ -80,20 +117,22 @@ async function safeParseResponse<T = any>(response: Response, defaultErrorMessag
     try {
       const data = JSON.parse(trimmed);
       if (!response.ok) {
-        const errorDetail = data?.detail || data?.message || `${defaultErrorMessage} (HTTP ${response.status})`;
-        throw new Error(typeof errorDetail === 'string' ? errorDetail : JSON.stringify(errorDetail));
+        const errorDetail = data?.detail || data?.message || `${defaultStatusMessage} (HTTP ${response.status})`;
+        const msg = typeof errorDetail === 'string' ? errorDetail : JSON.stringify(errorDetail);
+        throw new ApiError(msg, code, response.status);
       }
       return data as T;
     } catch (parseErr: any) {
+      if (parseErr instanceof ApiError) throw parseErr;
       if (!response.ok) {
-        throw new Error(trimmed || `${defaultErrorMessage} (HTTP ${response.status})`);
+        throw new ApiError(trimmed || `${defaultStatusMessage} (HTTP ${response.status})`, code, response.status);
       }
-      throw new Error(`Failed to parse response: ${parseErr.message}`);
+      throw new ApiError(`Failed to parse response: ${parseErr.message}`, 'PARSE_ERROR', response.status);
     }
   }
 
   if (!response.ok) {
-    throw new Error(trimmed || `${defaultErrorMessage} (HTTP ${response.status})`);
+    throw new ApiError(trimmed || `${defaultStatusMessage} (HTTP ${response.status})`, code, response.status);
   }
 
   return trimmed as unknown as T;
@@ -249,13 +288,14 @@ export async function getRecommendationsApi(token: string): Promise<any> {
   return await safeParseResponse(response, 'Failed to fetch recommendations.');
 }
 
-export async function refreshRecommendationsApi(token: string): Promise<any> {
+export async function refreshRecommendationsApi(token: string, topic?: string): Promise<any> {
   const response = await safeFetch(`${API_BASE_URL}/recommendation/refresh`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
     },
+    body: JSON.stringify(topic ? { topic } : {}),
   });
 
   return await safeParseResponse(response, 'Failed to trigger Learning Curator Agent.');

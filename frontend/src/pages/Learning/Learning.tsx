@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { BookOpen, Bookmark, Heart, Star, Search, ExternalLink, RefreshCw, Loader2, Sparkles } from 'lucide-react';
+import { BookOpen, Bookmark, Heart, Star, Search, ExternalLink, Loader2, Sparkles } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
@@ -19,20 +19,21 @@ export const Learning: React.FC = () => {
       setIsLoading(true);
       getRecommendationsApi(authToken)
         .then((data) => {
-          if (data && data.recommendations) {
+          const recs = (data && (data.recommendations || data.resources)) || [];
+          if (recs && recs.length > 0) {
             setLearningResources(
-              data.recommendations.map((r: any) => ({
+              recs.map((r: any) => ({
                 id: r.id || `rec-${Math.random()}`,
                 title: r.title,
                 type: (r.type || 'course').toLowerCase(),
                 author: r.author || r.provider || r.channel || 'GrowthOS AI Curator',
-                platform: r.provider || r.source || 'YouTube',
+                platform: r.platform || r.provider || r.channel || r.source || 'YouTube',
                 duration: r.duration || '20 Mins',
                 difficulty: r.difficulty || 'Intermediate',
                 category: 'AI Architecture',
                 rating: r.rating || 4.9,
-                matchScore: r.match_score || 92,
-                whyRecommended: r.why_recommended || r.reason || 'Personalized match based on your skill gap.',
+                matchScore: r.matchScore || r.match_score || 92,
+                whyRecommended: r.whyRecommended || r.why_recommended || r.reason || 'Personalized match based on your skill gap.',
                 imageUrl: r.imageUrl || r.thumbnail || r.image_url || '',
                 link: r.link || r.url || '#',
                 tags: r.tags || ['AI'],
@@ -50,29 +51,30 @@ export const Learning: React.FC = () => {
           setIsLoading(false);
         });
     }
-  }, [authToken]);
+  }, [authToken, setLearningResources]);
 
   const handleTriggerCuratorAgent = async () => {
-    if (!authToken) return;
+    if (!authToken || isLoading) return;
     setIsLoading(true);
-    setStatusMsg('Learning Curator Agent searching YouTube & Web and ranking resources with Groq AI...');
+    setStatusMsg('AI Curator is searching and personalizing resources...');
     try {
       const data = await refreshRecommendationsApi(authToken);
-      if (data && data.recommendations) {
+      const recs = (data && (data.recommendations || data.resources)) || [];
+      if (recs && recs.length > 0) {
         setLearningResources(
-          data.recommendations.map((r: any) => ({
+          recs.map((r: any) => ({
             id: r.id || `rec-${Math.random()}`,
             title: r.title,
             type: (r.type || 'course').toLowerCase(),
             author: r.author || r.provider || r.channel || 'GrowthOS AI Curator',
-            platform: r.provider || r.source || 'YouTube',
+            platform: r.platform || r.provider || r.channel || r.source || 'YouTube',
             duration: r.duration || '20 Mins',
             difficulty: r.difficulty || 'Intermediate',
             category: 'AI Architecture',
             rating: r.rating || 4.9,
-            matchScore: r.match_score || 92,
-            whyRecommended: r.why_recommended || r.reason || 'Personalized match based on your skill gap.',
-                imageUrl: r.imageUrl || r.thumbnail || r.image_url || '',
+            matchScore: r.matchScore || r.match_score || 92,
+            whyRecommended: r.whyRecommended || r.why_recommended || r.reason || 'Personalized match based on your skill gap.',
+            imageUrl: r.imageUrl || r.thumbnail || r.image_url || '',
             link: r.link || r.url || '#',
             tags: r.tags || ['AI'],
             isBookmarked: false,
@@ -80,8 +82,10 @@ export const Learning: React.FC = () => {
             progressPercentage: r.progressPercentage ?? r.progress_percentage ?? 0,
           }))
         );
-        setStatusMsg('✓ Agent completed! Real search results & personalized AI rankings saved.');
+        setStatusMsg('✓ Agent completed! Real search results & personalized rankings saved.');
         setTimeout(() => setStatusMsg(''), 4000);
+      } else {
+        setStatusMsg('No matching learning resources found for your current skill gap.');
       }
     } catch (err: any) {
       console.error('Learning curator execution error:', err);
@@ -90,7 +94,6 @@ export const Learning: React.FC = () => {
       setIsLoading(false);
     }
   };
-
 
   const types = [
     { label: 'All Media', value: 'all' },
@@ -132,7 +135,7 @@ export const Learning: React.FC = () => {
             onClick={handleTriggerCuratorAgent}
             leftIcon={isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
           >
-            {isLoading ? 'Curating with Groq AI...' : 'Run Learning Curator Agent'}
+            {isLoading ? 'AI Curator is searching and personalizing resources...' : 'Run Learning Curator Agent'}
           </Button>
 
           {/* Search Input */}
@@ -172,110 +175,128 @@ export const Learning: React.FC = () => {
         ))}
       </div>
 
-      {/* Resource Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filtered.map((res) => (
-          <motion.div
-            key={res.id}
-            layout
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="glass-panel rounded-3xl border border-white/10 overflow-hidden flex flex-col justify-between hover:border-purple-500/40 transition-all duration-300 group cursor-pointer"
-            onClick={() => {
-              if (res.link && res.link !== '#') {
-                window.open(res.link, '_blank');
-              }
-            }}
+      {/* Resource Grid / Empty State */}
+      {filtered.length === 0 ? (
+        <div className="flex flex-col items-center justify-center p-12 glass-panel rounded-3xl border border-white/10 text-center space-y-3">
+          <BookOpen className="w-10 h-10 text-slate-500" />
+          <h3 className="text-sm font-bold text-white">No Resources Found</h3>
+          <p className="text-xs text-slate-400 max-w-md">
+            No matching learning resources found for your current skill gap.
+          </p>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleTriggerCuratorAgent}
+            disabled={isLoading}
+            leftIcon={isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 text-purple-400" />}
           >
-            {/* Image Banner */}
-            <div className="relative h-44 w-full overflow-hidden">
-              <img
-                src={res.imageUrl}
-                alt={res.title}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#12141d] via-transparent to-black/30" />
+            {isLoading ? 'AI Curator is searching...' : 'Run Learning Curator Agent'}
+          </Button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filtered.map((res) => (
+            <motion.div
+              key={res.id}
+              layout
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="glass-panel rounded-3xl border border-white/10 overflow-hidden flex flex-col justify-between hover:border-purple-500/40 transition-all duration-300 group cursor-pointer"
+              onClick={() => {
+                if (res.link && res.link !== '#') {
+                  window.open(res.link, '_blank');
+                }
+              }}
+            >
+              {/* Image Banner */}
+              <div className="relative h-44 w-full overflow-hidden">
+                <img
+                  src={res.imageUrl}
+                  alt={res.title}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#12141d] via-transparent to-black/30" />
 
-              <span className="absolute top-3 left-3 px-2.5 py-1 text-[10px] font-bold rounded-lg bg-black/70 text-white backdrop-blur-md uppercase tracking-wider border border-white/10">
-                {res.type}
-              </span>
+                <span className="absolute top-3 left-3 px-2.5 py-1 text-[10px] font-bold rounded-lg bg-black/70 text-white backdrop-blur-md uppercase tracking-wider border border-white/10">
+                  {res.type}
+                </span>
 
-              {/* Bookmark & Heart Buttons */}
-              <div className="absolute top-3 right-3 flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-                <button
-                  onClick={() => toggleLikeResource(res.id)}
-                  className={`p-2 rounded-xl backdrop-blur-md border transition-colors ${
-                    res.isLiked ? 'bg-rose-500/20 border-rose-500/40 text-rose-400' : 'bg-black/40 border-white/10 text-slate-400 hover:text-white'
-                  }`}
-                >
-                  <Heart className={`w-3.5 h-3.5 ${res.isLiked ? 'fill-rose-400' : ''}`} />
-                </button>
-                <button
-                  onClick={() => toggleBookmarkResource(res.id)}
-                  className={`p-2 rounded-xl backdrop-blur-md border transition-colors ${
-                    res.isBookmarked ? 'bg-purple-500/20 border-purple-500/40 text-purple-300' : 'bg-black/40 border-white/10 text-slate-400 hover:text-white'
-                  }`}
-                >
-                  <Bookmark className={`w-3.5 h-3.5 ${res.isBookmarked ? 'fill-purple-300' : ''}`} />
-                </button>
+                {/* Bookmark & Heart Buttons */}
+                <div className="absolute top-3 right-3 flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    onClick={() => toggleLikeResource(res.id)}
+                    className={`p-2 rounded-xl backdrop-blur-md border transition-colors ${
+                      res.isLiked ? 'bg-rose-500/20 border-rose-500/40 text-rose-400' : 'bg-black/40 border-white/10 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <Heart className={`w-3.5 h-3.5 ${res.isLiked ? 'fill-rose-400' : ''}`} />
+                  </button>
+                  <button
+                    onClick={() => toggleBookmarkResource(res.id)}
+                    className={`p-2 rounded-xl backdrop-blur-md border transition-colors ${
+                      res.isBookmarked ? 'bg-purple-500/20 border-purple-500/40 text-purple-300' : 'bg-black/40 border-white/10 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <Bookmark className={`w-3.5 h-3.5 ${res.isBookmarked ? 'fill-purple-300' : ''}`} />
+                  </button>
+                </div>
               </div>
-            </div>
 
-            {/* Card Body */}
-            <div className="p-5 space-y-3 flex-1 flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between text-[11px] text-slate-400 mb-1">
-                  <span className="flex items-center gap-1">
-                    <span className="px-2 py-0.5 text-[9px] font-bold rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase">
-                      {res.matchScore ? `${res.matchScore}% Match` : '92% Match'}
+              {/* Card Body */}
+              <div className="p-5 space-y-3 flex-1 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between text-[11px] text-slate-400 mb-1">
+                    <span className="flex items-center gap-1">
+                      <span className="px-2 py-0.5 text-[9px] font-bold rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase">
+                        {res.matchScore ? `${res.matchScore}% Match` : '92% Match'}
+                      </span>
+                      <span className="text-slate-500">•</span>
+                      <span>{res.platform}</span>
                     </span>
-                    <span className="text-slate-500">•</span>
-                    <span>{res.platform}</span>
-                  </span>
-                  <span className="flex items-center gap-1 text-amber-400 font-bold">
-                    <Star className="w-3 h-3 fill-amber-400" /> {res.rating}
-                  </span>
-                </div>
-
-                <h3 className="text-sm font-bold text-white group-hover:text-purple-300 transition-colors line-clamp-2 flex items-center justify-between gap-1 mt-1">
-                  <span>{res.title}</span>
-                  <ExternalLink className="w-3.5 h-3.5 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-                </h3>
-                <p className="text-xs text-slate-400 mt-1">{res.author} • {res.duration}</p>
-
-                {res.whyRecommended && (
-                  <p className="text-[11px] text-purple-300/90 italic bg-purple-500/10 border border-purple-500/20 rounded-lg p-2 mt-2.5 line-clamp-2">
-                    "{res.whyRecommended}"
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-3 pt-2 border-t border-white/10">
-                {/* Progress bar */}
-                <div className="space-y-1">
-                  <div className="flex justify-between text-[10px] font-semibold text-slate-400">
-                    <span>Completion</span>
-                    <span className="text-purple-400">{res.progressPercentage}%</span>
-                  </div>
-                  <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 h-full" style={{ width: `${res.progressPercentage}%` }} />
-                  </div>
-                </div>
-
-                {/* Tags */}
-                <div className="flex flex-wrap gap-1.5">
-                  {res.tags.map((t: string, i: number) => (
-                    <span key={i} className="px-2 py-0.5 text-[9px] font-mono rounded-md bg-white/5 text-slate-400 border border-white/5">
-                      #{t}
+                    <span className="flex items-center gap-1 text-amber-400 font-bold">
+                      <Star className="w-3 h-3 fill-amber-400" /> {res.rating}
                     </span>
-                  ))}
+                  </div>
+
+                  <h3 className="text-sm font-bold text-white group-hover:text-purple-300 transition-colors line-clamp-2 flex items-center justify-between gap-1 mt-1">
+                    <span>{res.title}</span>
+                    <ExternalLink className="w-3.5 h-3.5 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-1">{res.author} • {res.duration}</p>
+
+                  {res.whyRecommended && (
+                    <p className="text-[11px] text-purple-300/90 italic bg-purple-500/10 border border-purple-500/20 rounded-lg p-2 mt-2.5 line-clamp-2">
+                      "{res.whyRecommended}"
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-3 pt-2 border-t border-white/10">
+                  {/* Progress bar */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-[10px] font-semibold text-slate-400">
+                      <span>Completion</span>
+                      <span className="text-purple-400">{res.progressPercentage}%</span>
+                    </div>
+                    <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                      <div className="bg-gradient-to-r from-purple-500 to-indigo-500 h-full" style={{ width: `${res.progressPercentage}%` }} />
+                    </div>
+                  </div>
+
+                  {/* Tags */}
+                  <div className="flex flex-wrap gap-1.5">
+                    {res.tags.map((t: string, i: number) => (
+                      <span key={i} className="px-2 py-0.5 text-[9px] font-mono rounded-md bg-white/5 text-slate-400 border border-white/5">
+                        #{t}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
-
-          </motion.div>
-        ))}
-      </div>
+            </motion.div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

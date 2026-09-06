@@ -242,6 +242,9 @@ class CuratorEngine:
             llm_eval = eval_map.get(c.url, {})
             score = llm_eval.get("match_score") or round(0.95 - (i * 0.03), 2)
             reason = llm_eval.get("reason") or f"Directly addresses your gap in {skill_gap} with clear practical context."
+            numeric_score = round(score * 100) if score <= 1.0 else int(score)
+            thumb = c.thumbnail or "https://images.unsplash.com/photo-1516116211223-48a122638e59?auto=format&fit=crop&w=800&q=80"
+            prov = c.channel or c.source.capitalize()
 
             formatted.append({
                 "id": c.resource_id,
@@ -250,15 +253,19 @@ class CuratorEngine:
                 "source": c.source,
                 "url": c.url,
                 "link": c.url,
-                "thumbnail": c.thumbnail or "https://images.unsplash.com/photo-1516116211223-48a122638e59?auto=format&fit=crop&w=800&q=80",
-                "imageUrl": c.thumbnail or "https://images.unsplash.com/photo-1516116211223-48a122638e59?auto=format&fit=crop&w=800&q=80",
-                "author": c.channel or "Educational Source",
-                "provider": c.channel or c.source.capitalize(),
+                "thumbnail": thumb,
+                "imageUrl": thumb,
+                "image_url": thumb,
+                "author": prov,
+                "provider": prov,
+                "channel": prov,
                 "duration": f"{c.duration_minutes or 20} Mins",
                 "difficulty": "Intermediate",
                 "rating": 4.9,
-                "match_score": round(score * 100) if score <= 1.0 else int(score),
+                "match_score": numeric_score,
+                "matchScore": numeric_score,
                 "progressPercentage": 0,
+                "progress_percentage": 0,
                 "reason": reason,
                 "why_recommended": reason,
                 "tags": [skill_gap.split()[0], c.type],
@@ -274,12 +281,16 @@ class CuratorEngine:
             item["id"] = generate_uuid()
             item["link"] = item["url"]
             item["imageUrl"] = item["thumbnail"]
+            item["image_url"] = item["thumbnail"]
             item["author"] = item["channel"]
             item["provider"] = item["channel"]
             item["duration"] = f"{item['duration_minutes']} Mins"
             item["rating"] = 4.9
-            item["match_score"] = int(item["match_score"] * 100)
+            score = int(item["match_score"] * 100)
+            item["match_score"] = score
+            item["matchScore"] = score
             item["progressPercentage"] = 0
+            item["progress_percentage"] = 0
             item["why_recommended"] = item["reason"]
             item["tags"] = [skill_gap.split()[0], item["type"]]
             item["created_at"] = get_utc_now()

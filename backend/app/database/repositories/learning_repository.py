@@ -14,10 +14,28 @@ class LearningRepository:
         collection = get_collection(COLLECTION_RECOMMENDATIONS)
         if collection is not None:
             await collection.insert_one(doc)
+            doc.pop('_id', None)
         else:
             mock_store = get_mock_collection(COLLECTION_RECOMMENDATIONS)
-            mock_store.append(doc)
+            clean_doc = dict(doc)
+            clean_doc.pop('_id', None)
+            mock_store.append(clean_doc)
         return doc
+
+    async def get_by_user_id(self, user_id: str) -> dict | None:
+        collection = get_collection(COLLECTION_RECOMMENDATIONS)
+        if collection is not None:
+            doc = await collection.find_one({"user_id": user_id, "data": {"$exists": True}})
+            if doc:
+                doc.pop('_id', None)
+                return doc.get("data")
+            return None
+        else:
+            mock_store = get_mock_collection(COLLECTION_RECOMMENDATIONS)
+            for item in reversed(mock_store):
+                if item.get("user_id") == user_id and "data" in item:
+                    return item.get("data")
+            return None
 
 
 learning_repository = LearningRepository()
