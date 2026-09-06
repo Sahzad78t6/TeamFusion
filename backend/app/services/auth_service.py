@@ -2,6 +2,8 @@ import logging
 import urllib.request
 import urllib.parse
 import json
+import uuid
+import time
 from fastapi import HTTPException
 from app.config.settings import settings
 from app.database.repositories.user_repository import user_repository
@@ -12,6 +14,35 @@ logger = logging.getLogger(__name__)
 
 
 class AuthService:
+    def __init__(self):
+        self._tickets: dict[str, dict] = {}
+
+    def create_auth_ticket(self, auth_data: dict) -> str:
+        ticket = f"ticket_{uuid.uuid4().hex}"
+        self._tickets[ticket] = {
+            "data": auth_data,
+            "expires_at": time.time() + 60
+        }
+        self._cleanup_expired_tickets()
+        return ticket
+
+    def claim_auth_ticket(self, ticket: str) -> dict:
+        self._cleanup_expired_tickets()
+        if not ticket or ticket not in self._tickets:
+            raise HTTPException(status_code=400, detail="Invalid, expired, or already claimed authentication ticket.")
+        
+        ticket_info = self._tickets.pop(ticket)
+        if time.time() > ticket_info["expires_at"]:
+            raise HTTPException(status_code=400, detail="Authentication ticket has expired.")
+        
+        return ticket_info["data"]
+
+    def _cleanup_expired_tickets(self):
+        now = time.time()
+        expired = [t for t, info in list(self._tickets.items()) if now > info["expires_at"]]
+        for t in expired:
+            self._tickets.pop(t, None)
+
     async def signup(self, name: str, email: str, password: str) -> dict:
         logger.info(f"AuthService processing signup for email: {email}")
         if not name or not email or not password:
@@ -143,7 +174,6 @@ class AuthService:
             
             id_token = data.get("id_token")
             if not id_token:
-                # Fallback userinfo endpoint using access_token
                 acc_token = data.get("access_token")
                 if not acc_token:
                     raise HTTPException(status_code=400, detail="Google token exchange failed: missing id_token.")
@@ -206,8 +236,6 @@ class AuthService:
         except Exception as e:
             logger.warning(f"Google tokeninfo online check failed: {e}. Falling back to JWT decode.")
 
-        # Never decode an unverified Google token: a forged payload could issue a
-        # GrowthOS session for an arbitrary email address.
         return None
 
     async def get_current_user(self, user_id: str) -> dict:
@@ -225,4 +253,3 @@ class AuthService:
 
 
 auth_service = AuthService()
-

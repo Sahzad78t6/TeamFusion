@@ -3,7 +3,7 @@ import { NavLink, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Zap, Mail, Lock, ArrowRight, Github, Chrome, AlertCircle } from 'lucide-react';
 import { Button } from '../../components/common/Button';
-import { loginApi } from '../../services/api';
+import { loginApi, claimAuthTicketApi } from '../../services/api';
 import { useApp } from '../../context/AppContext';
 
 export const Login: React.FC = () => {
@@ -18,6 +18,7 @@ export const Login: React.FC = () => {
 
   useEffect(() => {
     // Check if returning from Google OAuth Redirect
+    const ticket = searchParams.get('ticket');
     const accessToken = searchParams.get('access_token');
     const refreshToken = searchParams.get('refresh_token');
     const userId = searchParams.get('user_id');
@@ -27,6 +28,19 @@ export const Login: React.FC = () => {
 
     if (authError) {
       setErrorMessage(decodeURIComponent(authError));
+    } else if (ticket) {
+      setIsLoading(true);
+      claimAuthTicketApi(ticket)
+        .then((res) => {
+          setAuthSession(res.access_token, res.refresh_token, res.user);
+          navigate('/dashboard', { replace: true });
+        })
+        .catch((err) => {
+          setErrorMessage(err.message || 'Google authentication ticket exchange failed.');
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
     } else if (accessToken && userId) {
       const user = {
         id: userId,

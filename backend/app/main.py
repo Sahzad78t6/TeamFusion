@@ -1,9 +1,13 @@
+import urllib.parse
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, APIRouter
+from fastapi.responses import RedirectResponse
+
 from app.config.settings import settings
 from app.database.mongodb import connect_to_mongo, close_mongo_connection
 from app.middleware.cors import setup_cors
 from app.middleware.logging import LoggingMiddleware
+from app.services.auth_service import auth_service
 
 # API Routers
 from app.api import (
@@ -84,16 +88,17 @@ app.include_router(health.router)
 app.include_router(institutions.router)
 
 
-
-import urllib.parse
-from fastapi.responses import RedirectResponse
-from app.services.auth_service import auth_service
-
 @app.get("/", tags=["Root"])
 async def root(code: str | None = None, state: str | None = None, error: str | None = None):
     # Process Google OAuth Callback ONLY when authorization code or OAuth error is present
     if code or error:
-        frontend_base = settings.FRONTEND_URL.rstrip("/") + "/login"
+        # Determine target frontend URL strictly by environment and state
+        if state and state.startswith("dev"):
+            frontend_base = "http://localhost:5173/login"
+        else:
+            frontend_base = settings.FRONTEND_URL.rstrip("/") + "/login"
+            if "localhost" in frontend_base and settings.ENV != "development":
+                frontend_base = "https://team-fusion-psi.vercel.app/login"
         
         if error:
             error_clean = urllib.parse.quote(f"Google OAuth Error: {error}")
@@ -103,16 +108,10 @@ async def root(code: str | None = None, state: str | None = None, error: str | N
             redirect_uri = settings.GOOGLE_OAUTH_REDIRECT_URI
             res = await auth_service.handle_google_code_exchange(code=code, redirect_uri=redirect_uri)
             
-            token = res.get("access_token", "")
-            refresh_token = res.get("refresh_token", "")
-            user_id = res.get("user", {}).get("id", "")
-            user_name = urllib.parse.quote(res.get("user", {}).get("name", ""))
-            user_email = urllib.parse.quote(res.get("user", {}).get("email", ""))
+            # Issue single-use 60-second exchange ticket (NEVER put access_token into URL query string)
+            ticket = auth_service.create_auth_ticket(res)
 
-            redirect_target = (
-                f"{frontend_base}?access_token={token}&refresh_token={refresh_token}"
-                f"&user_id={user_id}&user_name={user_name}&user_email={user_email}"
-            )
+            redirect_target = f"{frontend_base}?ticket={ticket}"
             return RedirectResponse(url=redirect_target, status_code=302)
         except Exception as e:
             error_clean = urllib.parse.quote(str(e))
@@ -124,4 +123,3 @@ async def root(code: str | None = None, state: str | None = None, error: str | N
         "status": "online",
         "docs": "/docs"
     }
-

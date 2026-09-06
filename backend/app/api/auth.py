@@ -16,6 +16,10 @@ class GoogleLoginPayload(BaseModel):
     redirect_uri: str | None = Field(default=None, description="Redirect URI used for code exchange")
 
 
+class TicketClaimPayload(BaseModel):
+    ticket: str = Field(..., description="Single-use OAuth exchange ticket")
+
+
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 @router.post("/signup", response_model=TokenResponse)
@@ -25,6 +29,10 @@ async def signup_api(payload: SignupRequest):
 @router.post("/login", response_model=TokenResponse)
 async def login_api(payload: LoginRequest):
     return await auth_service.login(payload.email, payload.password)
+
+@router.post("/claim-ticket", response_model=TokenResponse)
+async def claim_ticket_api(payload: TicketClaimPayload):
+    return auth_service.claim_auth_ticket(payload.ticket)
 
 @router.post("/google", response_model=TokenResponse)
 async def google_login_api(payload: GoogleLoginPayload):

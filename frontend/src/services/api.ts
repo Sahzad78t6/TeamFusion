@@ -433,6 +433,24 @@ async function institutionRequest(token: string, path: string, method = 'GET', b
   return data;
 }
 
+export async function claimAuthTicketApi(ticket: string): Promise<AuthTokenResponse> {
+  const response = await safeFetch(`${API_BASE_URL}/auth/claim-ticket`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ ticket }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.detail || 'Authentication ticket exchange failed.');
+  }
+
+  return data;
+}
+
 export const getInstitutionAnalyticsApi = (token: string) => institutionRequest(token, '/analytics');
 export const getCohortsApi = (token: string) => institutionRequest(token, '/cohorts');
 export const createCohortApi = (token: string, payload: { name: string; year: string; branch: string; section?: string }) => institutionRequest(token, '/cohorts', 'POST', payload);
