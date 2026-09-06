@@ -14,6 +14,7 @@ import {
   AuthUserResponse,
   getMeApi,
   logoutApi,
+  claimAuthTicketApi,
   submitOnboardingApi,
   getDashboardApi,
   getAnalyticsApi,
@@ -25,13 +26,14 @@ import {
   OnboardingPayload,
 } from '../services/api';
 
-interface AppContextType {
+export interface AppContextType {
   user: UserProfile;
   setUser: React.Dispatch<React.SetStateAction<UserProfile>>;
   authToken: string | null;
   setAuthToken: (token: string | null) => void;
   setAuthSession: (accessToken: string, refreshToken: string, authUser: AuthUserResponse) => void;
-  logout: () => void;
+  logout: () => Promise<void>;
+  isExchangingTicket: boolean;
   identityTwin: IdentityTwin;
   setIdentityTwin: React.Dispatch<React.SetStateAction<IdentityTwin>>;
   learningResources: LearningResource[];
@@ -64,6 +66,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserProfile>(emptyUser);
   const [authToken, setAuthTokenState] = useState<string | null>(() => localStorage.getItem('growthos_access_token'));
+  const [isExchangingTicket, setIsExchangingTicket] = useState<boolean>(false);
   const [identityTwin, setIdentityTwin] = useState<IdentityTwin>(emptyIdentityTwin);
   const [learningResources, setLearningResources] = useState<LearningResource[]>([]);
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
@@ -265,6 +268,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   useEffect(() => {
+    // Check if returning from Google OAuth redirect with a single-use ticket
+    const searchParams = new URLSearchParams(window.location.search);
+    const ticket = searchParams.get('ticket');
+    const authError = searchParams.get('auth_error');
+
+    if (ticket) {
+      setIsExchangingTicket(true);
+      claimAuthTicketApi(ticket)
+        .then((res) => {
+          setAuthSession(res.access_token, res.refresh_token, res.user);
+          // Strip ?ticket=... immediately so user never sees ticket in address bar
+          const cleanUrl = window.location.pathname;
+          window.history.replaceState({}, document.title, cleanUrl);
+        })
+        .catch((err) => {
+          console.error('GrowthOS ticket exchange failed:', err);
+          const cleanUrl = window.location.pathname;
+          window.history.replaceState({}, document.title, cleanUrl);
+        })
+        .finally(() => {
+          setIsExchangingTicket(false);
+        });
+    } else if (authError) {
+      const cleanUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, cleanUrl);
+    }
+  }, []);
+
+  useEffect(() => {
     if (authToken) {
       getMeApi(authToken)
         .then((me) => {
@@ -358,7 +390,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-
   return (
     <AppContext.Provider
       value={{
@@ -368,6 +399,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setAuthToken,
         setAuthSession,
         logout,
+        isExchangingTicket,
         identityTwin,
         setIdentityTwin,
         learningResources,

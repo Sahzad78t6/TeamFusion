@@ -92,30 +92,34 @@ app.include_router(institutions.router)
 async def root(code: str | None = None, state: str | None = None, error: str | None = None):
     # Process Google OAuth Callback ONLY when authorization code or OAuth error is present
     if code or error:
-        # Determine target frontend URL strictly by environment and state
-        if state and state.startswith("dev"):
-            frontend_base = "http://localhost:5173/login"
+        # Determine target frontend domain strictly by state & environment settings
+        if state and state.startswith("dev") and settings.ENV == "development":
+            frontend_domain = "http://localhost:5173"
         else:
-            frontend_base = settings.FRONTEND_URL.rstrip("/") + "/login"
-            if "localhost" in frontend_base and settings.ENV != "development":
-                frontend_base = "https://team-fusion-psi.vercel.app/login"
+            frontend_domain = settings.FRONTEND_URL.rstrip("/")
+            if "localhost" in frontend_domain:
+                frontend_domain = "https://team-fusion-psi.vercel.app"
         
         if error:
             error_clean = urllib.parse.quote(f"Google OAuth Error: {error}")
-            return RedirectResponse(url=f"{frontend_base}?auth_error={error_clean}", status_code=302)
+            return RedirectResponse(url=f"{frontend_domain}/login?auth_error={error_clean}", status_code=302)
 
         try:
             redirect_uri = settings.GOOGLE_OAUTH_REDIRECT_URI
             res = await auth_service.handle_google_code_exchange(code=code, redirect_uri=redirect_uri)
             
-            # Issue single-use 60-second exchange ticket (NEVER put access_token into URL query string)
+            # Check user onboarding state
+            user_info = res.get("user", {})
+            target_route = "/onboarding" if user_info.get("onboarding_completed") is False else "/dashboard"
+
+            # Issue single-use 60-second exchange ticket
             ticket = auth_service.create_auth_ticket(res)
 
-            redirect_target = f"{frontend_base}?ticket={ticket}"
+            redirect_target = f"{frontend_domain}{target_route}?ticket={ticket}"
             return RedirectResponse(url=redirect_target, status_code=302)
         except Exception as e:
             error_clean = urllib.parse.quote(str(e))
-            return RedirectResponse(url=f"{frontend_base}?auth_error={error_clean}", status_code=302)
+            return RedirectResponse(url=f"{frontend_domain}/login?auth_error={error_clean}", status_code=302)
 
     # Standard Render Health & Status Response when no OAuth parameters exist
     return {

@@ -7,50 +7,26 @@ import { loginApi, claimAuthTicketApi } from '../../services/api';
 import { useApp } from '../../context/AppContext';
 
 export const Login: React.FC = () => {
-  const [email, setEmail] = useState('alex.rivera@growthos.ai');
-  const [password, setPassword] = useState('••••••••••••');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const { setAuthSession } = useApp();
+  const { authToken, setAuthSession, isExchangingTicket } = useApp();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
   useEffect(() => {
-    // Check if returning from Google OAuth Redirect
-    const ticket = searchParams.get('ticket');
-    const accessToken = searchParams.get('access_token');
-    const refreshToken = searchParams.get('refresh_token');
-    const userId = searchParams.get('user_id');
-    const userName = searchParams.get('user_name');
-    const userEmail = searchParams.get('user_email');
-    const authError = searchParams.get('auth_error');
+    if (authToken && !isExchangingTicket) {
+      navigate('/dashboard', { replace: true });
+      return;
+    }
 
+    const authError = searchParams.get('auth_error');
     if (authError) {
       setErrorMessage(decodeURIComponent(authError));
-    } else if (ticket) {
-      setIsLoading(true);
-      claimAuthTicketApi(ticket)
-        .then((res) => {
-          setAuthSession(res.access_token, res.refresh_token, res.user);
-          navigate('/dashboard', { replace: true });
-        })
-        .catch((err) => {
-          setErrorMessage(err.message || 'Google authentication ticket exchange failed.');
-        })
-        .finally(() => {
-          setIsLoading(false);
-        });
-    } else if (accessToken && userId) {
-      const user = {
-        id: userId,
-        name: userName ? decodeURIComponent(userName) : 'GrowthOS User',
-        email: userEmail ? decodeURIComponent(userEmail) : '',
-      };
-      setAuthSession(accessToken, refreshToken || '', user);
-      navigate('/dashboard', { replace: true });
     }
-  }, [searchParams, setAuthSession, navigate]);
+  }, [authToken, isExchangingTicket, searchParams, navigate]);
 
   const handleGoogleLogin = () => {
     const googleClientId = (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID || '';
