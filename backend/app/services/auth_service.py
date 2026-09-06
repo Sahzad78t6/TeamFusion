@@ -24,10 +24,12 @@ class AuthService:
             raise HTTPException(status_code=400, detail="User with this email already exists.")
         
         hashed = hash_password(password)
+        role = "PLATFORM_ADMIN" if email_clean in {address.lower() for address in settings.PLATFORM_ADMIN_EMAILS} else "STUDENT"
         user_doc = await user_repository.create_user({
             "name": name.strip(),
             "email": email_clean,
-            "hashed_password": hashed
+            "hashed_password": hashed,
+            "role": role,
         })
 
         access_token = create_access_token({"sub": user_doc["id"], "email": user_doc["email"]})
@@ -42,7 +44,8 @@ class AuthService:
                 "id": user_doc["id"],
                 "name": user_doc["name"],
                 "email": user_doc["email"],
-                "created_at": user_doc["created_at"]
+                "created_at": user_doc["created_at"], "role": user_doc["role"],
+                "institution_id": user_doc.get("institution_id"), "cohort_id": user_doc.get("cohort_id"),
             }
         }
 
@@ -69,7 +72,8 @@ class AuthService:
                 "id": user["id"],
                 "name": user["name"],
                 "email": user["email"],
-                "created_at": user.get("created_at")
+                "created_at": user.get("created_at"), "role": user.get("role", "STUDENT"),
+                "institution_id": user.get("institution_id"), "cohort_id": user.get("cohort_id"),
             }
         }
 
@@ -215,7 +219,8 @@ class AuthService:
             "id": user["id"],
             "name": user["name"],
             "email": user["email"],
-            "created_at": user.get("created_at")
+            "created_at": user.get("created_at"), "role": user.get("role", "STUDENT"),
+            "institution_id": user.get("institution_id"), "cohort_id": user.get("cohort_id"),
         }
 
 

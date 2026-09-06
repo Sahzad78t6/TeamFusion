@@ -15,6 +15,8 @@ import { Reflection } from '../pages/Reflection/Reflection';
 import { Notifications } from '../pages/Notifications/Notifications';
 import { Profile } from '../pages/Profile/Profile';
 import { Analytics } from '../pages/Analytics/Analytics';
+import { Assessments } from '../pages/Assessments/Assessments';
+import { InstitutionAdmin } from '../pages/InstitutionAdmin/InstitutionAdmin';
 import { ProtectedRoute } from './ProtectedRoute';
 
 export const AppRoutes: React.FC = () => {
@@ -38,6 +40,8 @@ export const AppRoutes: React.FC = () => {
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/analytics" element={<Analytics />} />
+        <Route path="/assessments" element={<Assessments />} />
+        <Route path="/institution-admin" element={<InstitutionAdmin />} />
       </Route>
       </Route>
 

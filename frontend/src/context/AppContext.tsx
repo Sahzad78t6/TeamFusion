@@ -9,16 +9,7 @@ import {
   NotificationItem,
   AnalyticsSummary,
 } from '../types';
-import {
-  mockUser,
-  mockIdentityTwin,
-  mockLearningResources,
-  mockOpportunities,
-  mockTasks,
-  mockReflections,
-  mockNotifications,
-  mockAnalytics,
-} from '../utils/dummyData';
+import { emptyAnalytics, emptyIdentityTwin, emptyUser } from '../utils/emptyState';
 import {
   AuthUserResponse,
   getMeApi,
@@ -71,15 +62,15 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<UserProfile>(mockUser);
+  const [user, setUser] = useState<UserProfile>(emptyUser);
   const [authToken, setAuthTokenState] = useState<string | null>(() => localStorage.getItem('growthos_access_token'));
-  const [identityTwin, setIdentityTwin] = useState<IdentityTwin>(mockIdentityTwin);
-  const [learningResources, setLearningResources] = useState<LearningResource[]>(mockLearningResources);
-  const [opportunities, setOpportunities] = useState<Opportunity[]>(mockOpportunities);
-  const [tasks, setTasks] = useState<TaskItem[]>(mockTasks);
-  const [reflections, setReflections] = useState<ReflectionEntry[]>(mockReflections);
-  const [notifications, setNotifications] = useState<NotificationItem[]>(mockNotifications);
-  const [analytics, setAnalytics] = useState<AnalyticsSummary>(mockAnalytics);
+  const [identityTwin, setIdentityTwin] = useState<IdentityTwin>(emptyIdentityTwin);
+  const [learningResources, setLearningResources] = useState<LearningResource[]>([]);
+  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
+  const [tasks, setTasks] = useState<TaskItem[]>([]);
+  const [reflections, setReflections] = useState<ReflectionEntry[]>([]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [analytics, setAnalytics] = useState<AnalyticsSummary>(emptyAnalytics);
   const [isCopilotOpen, setIsCopilotOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -104,6 +95,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       id: authUser.id,
       name: authUser.name || prev.name,
       email: authUser.email || prev.email,
+      role: authUser.role || prev.role,
     }));
   };
 
@@ -167,7 +159,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             difficulty: 'Intermediate',
             category: 'AI Architecture',
             rating: 4.9,
-            imageUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=400&q=80',
+            imageUrl: r.thumbnail || r.image_url || '',
             link: r.url || '#',
             tags: r.tags || ['AI'],
             isBookmarked: false,
@@ -281,6 +273,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             id: me.id,
             name: me.name || prev.name,
             email: me.email || prev.email,
+            role: me.role || prev.role,
           }));
           refreshDashboard();
         })

@@ -9,6 +9,10 @@ COLLECTION_OPPORTUNITIES = "opportunities"
 COLLECTION_ANALYTICS = "analytics"
 COLLECTION_NOTIFICATIONS = "notifications"
 COLLECTION_MEMORIES = "memories"
+COLLECTION_INSTITUTIONS = "institutions"
+COLLECTION_COHORTS = "cohorts"
+COLLECTION_ASSESSMENTS = "assessments"
+COLLECTION_ASSESSMENT_SUBMISSIONS = "assessment_submissions"
 
 # Agent Names
 AGENT_SUPERVISOR = "supervisor"

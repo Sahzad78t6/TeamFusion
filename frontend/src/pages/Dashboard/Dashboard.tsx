@@ -25,7 +25,7 @@ export const Dashboard: React.FC = () => {
   const { user, identityTwin, tasks, toggleTask, opportunities, learningResources, analytics, setIsCopilotOpen } = useApp();
 
   const completedCount = tasks.filter((t) => t.isCompleted).length;
-  const taskProgress = Math.round((completedCount / tasks.length) * 100);
+  const taskProgress = tasks.length ? Math.round((completedCount / tasks.length) * 100) : 0;
 
   return (
     <div className="space-y-8 pb-12">

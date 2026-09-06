@@ -11,6 +11,9 @@ class UserCreate(UserBase):
 class UserResponse(UserBase):
     id: str
     created_at: Optional[str] = None
+    role: str = "STUDENT"
+    institution_id: Optional[str] = None
+    cohort_id: Optional[str] = None
 
     class Config:
         from_attributes = True

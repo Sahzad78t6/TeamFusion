@@ -23,6 +23,7 @@ export interface UserProfile {
   joinedDate: string;
   achievements: Achievement[];
   certificates: Certificate[];
+  role?: 'STUDENT' | 'INSTITUTION_ADMIN' | 'PLATFORM_ADMIN';
 }
 
 export interface Achievement {

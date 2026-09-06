@@ -15,6 +15,9 @@ export interface AuthUserResponse {
   name: string;
   email: string;
   created_at?: string;
+  role?: 'STUDENT' | 'INSTITUTION_ADMIN' | 'PLATFORM_ADMIN';
+  institution_id?: string | null;
+  cohort_id?: string | null;
 }
 
 export interface AuthTokenResponse {
@@ -417,4 +420,22 @@ export async function chatWithCopilotApi(token: string, message: string): Promis
   const errorDetail = 'detail' in data ? data.detail : undefined;
   if (!response.ok) throw new Error(errorDetail || 'The AI Copilot could not complete that request.');
   return data as CopilotResponse;
-}
+}
+
+async function institutionRequest(token: string, path: string, method = 'GET', body?: unknown): Promise<any> {
+  const response = await safeFetch(`${API_BASE_URL}/institutions${path}`, {
+    method,
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.detail || 'Institution request failed.');
+  return data;
+}
+
+export const getInstitutionAnalyticsApi = (token: string) => institutionRequest(token, '/analytics');
+export const getCohortsApi = (token: string) => institutionRequest(token, '/cohorts');
+export const createCohortApi = (token: string, payload: { name: string; year: string; branch: string; section?: string }) => institutionRequest(token, '/cohorts', 'POST', payload);
+export const createAssessmentApi = (token: string, payload: unknown) => institutionRequest(token, '/assessments', 'POST', payload);
+export const getAssessmentsApi = (token: string) => institutionRequest(token, '/assessments');
+export const submitAssessmentApi = (token: string, assessmentId: string, answers: Record<string, number>) => institutionRequest(token, `/assessments/${assessmentId}/submissions`, 'POST', { answers });

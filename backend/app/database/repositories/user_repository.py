@@ -12,6 +12,9 @@ class UserRepository:
             "google_sub": user_data.get("google_sub"),
             "picture": user_data.get("picture"),
             "auth_provider": user_data.get("auth_provider", "email"),
+            "role": user_data.get("role", "STUDENT"),
+            "institution_id": user_data.get("institution_id"),
+            "cohort_id": user_data.get("cohort_id"),
             "created_at": get_utc_now()
         }
         collection = get_collection(COLLECTION_USERS)
@@ -82,6 +85,20 @@ class UserRepository:
                 if user.get("id") == user_id:
                     user.update(doc)
         return doc
+
+    async def update_tenant_membership(self, user_id: str, institution_id: str, cohort_id: str | None, role: str | None = None) -> bool:
+        fields = {"institution_id": institution_id, "cohort_id": cohort_id}
+        if role:
+            fields["role"] = role
+        collection = get_collection(COLLECTION_USERS)
+        if collection is not None:
+            result = await collection.update_one({"id": user_id}, {"$set": fields})
+            return result.matched_count == 1
+        for user in get_mock_collection(COLLECTION_USERS):
+            if user.get("id") == user_id:
+                user.update(fields)
+                return True
+        return False
 
 
 user_repository = UserRepository()

@@ -12,6 +12,8 @@ import {
   ChevronRight,
   Zap,
   Globe,
+  ClipboardList,
+  Building2,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
@@ -28,6 +30,8 @@ export const Sidebar: React.FC = () => {
     { label: 'Growth Opportunities', path: '/opportunities', icon: Compass, badge: 'AI Match' },
     { label: 'Daily Planner', path: '/planner', icon: Calendar },
     { label: 'Reflection', path: '/reflection', icon: PenTool },
+    { label: 'Assessments', path: '/assessments', icon: ClipboardList },
+    ...(user.role === 'INSTITUTION_ADMIN' || user.role === 'PLATFORM_ADMIN' ? [{ label: 'Institution Admin', path: '/institution-admin', icon: Building2 }] : []),
   ];
 
   return (

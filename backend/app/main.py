@@ -19,7 +19,8 @@ from app.api import (
     analytics,
     skills,
     activity,
-    health
+    health,
+    institutions
 )
 
 from app.utils.csv_validator import validate_opportunities_csv
@@ -62,6 +63,7 @@ api_router.include_router(analytics.router)
 api_router.include_router(skills.router)
 api_router.include_router(activity.router)
 api_router.include_router(health.router)
+api_router.include_router(institutions.router)
 
 app.include_router(api_router)
 
@@ -79,6 +81,7 @@ app.include_router(analytics.router)
 app.include_router(skills.router)
 app.include_router(activity.router)
 app.include_router(health.router)
+app.include_router(institutions.router)
 
 
 

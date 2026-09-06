@@ -10,6 +10,10 @@ from app.config.constants import (
     COLLECTION_OPPORTUNITIES,
     COLLECTION_ANALYTICS,
     COLLECTION_NOTIFICATIONS,
+    COLLECTION_INSTITUTIONS,
+    COLLECTION_COHORTS,
+    COLLECTION_ASSESSMENTS,
+    COLLECTION_ASSESSMENT_SUBMISSIONS,
 )
 
 logger = logging.getLogger(__name__)
@@ -37,6 +41,10 @@ async def init_collections_indexes():
         await db_instance.db[COLLECTION_OPPORTUNITIES].create_index("user_id", unique=True)
         await db_instance.db[COLLECTION_ANALYTICS].create_index("user_id", unique=True)
         await db_instance.db[COLLECTION_NOTIFICATIONS].create_index("user_id")
+        await db_instance.db[COLLECTION_INSTITUTIONS].create_index("id", unique=True)
+        await db_instance.db[COLLECTION_COHORTS].create_index([("institution_id", 1), ("id", 1)], unique=True)
+        await db_instance.db[COLLECTION_ASSESSMENTS].create_index([("institution_id", 1), ("cohort_id", 1)])
+        await db_instance.db[COLLECTION_ASSESSMENT_SUBMISSIONS].create_index([("assessment_id", 1), ("student_id", 1)], unique=True)
         logger.info("Successfully initialized MongoDB collection indexes.")
     except Exception as e:
         logger.warning(f"Index initialization warning: {e}")

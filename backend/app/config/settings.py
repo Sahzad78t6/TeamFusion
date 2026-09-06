@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_SECRET: str = ""
     GOOGLE_OAUTH_REDIRECT_URI: str = "https://teamfusion-96bi.onrender.com"
     FRONTEND_URL: str = "http://localhost:5173"
+    # Comma-separated or JSON-list environment value; these accounts bootstrap
+    # platform administration and should be managed outside source control.
+    PLATFORM_ADMIN_EMAILS: list[str] = []
 
     # Search Providers (YouTube & Web Search)
     YOUTUBE_API_KEY: str = ""
