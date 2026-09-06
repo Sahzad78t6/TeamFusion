@@ -18,6 +18,7 @@ export interface AuthUserResponse {
   role?: 'STUDENT' | 'INSTITUTION_ADMIN' | 'PLATFORM_ADMIN';
   institution_id?: string | null;
   cohort_id?: string | null;
+  onboarding_completed?: boolean;
 }
 
 export interface AuthTokenResponse {

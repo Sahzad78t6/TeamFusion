@@ -67,6 +67,17 @@ export const Login: React.FC = () => {
     }
   };
 
+  if (isExchangingTicket) {
+    return (
+      <div className="min-h-screen w-screen bg-[#090a0f] flex items-center justify-center p-4">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-10 h-10 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin" />
+          <p className="text-sm font-semibold text-slate-300">Authenticating GrowthOS Session...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen w-screen bg-[#090a0f] flex items-center justify-center p-4 selection:bg-purple-500 selection:text-white relative overflow-hidden">
       {/* Background Glow */}
@@ -183,7 +194,7 @@ export const Login: React.FC = () => {
               "GrowthOS transformed my career trajectory in 90 days."
             </h3>
             <p className="text-xs text-slate-300 leading-relaxed">
-              Our autonomous LangGraph agents continuously align your daily tasks, learning resources, and hackathons with your dream role.
+              Our autonomous AI agents continuously align your daily tasks, learning resources, and hackathons with your dream role.
             </p>
           </div>
 

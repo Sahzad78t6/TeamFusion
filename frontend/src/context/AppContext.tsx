@@ -66,7 +66,13 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserProfile>(emptyUser);
   const [authToken, setAuthTokenState] = useState<string | null>(() => localStorage.getItem('growthos_access_token'));
-  const [isExchangingTicket, setIsExchangingTicket] = useState<boolean>(false);
+  const [isExchangingTicket, setIsExchangingTicket] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      return Boolean(params.get('ticket'));
+    }
+    return false;
+  });
   const [identityTwin, setIdentityTwin] = useState<IdentityTwin>(emptyIdentityTwin);
   const [learningResources, setLearningResources] = useState<LearningResource[]>([]);
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
@@ -271,7 +277,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // Check if returning from Google OAuth redirect with a single-use ticket
     const searchParams = new URLSearchParams(window.location.search);
     const ticket = searchParams.get('ticket');
-    const authError = searchParams.get('auth_error');
 
     if (ticket) {
       setIsExchangingTicket(true);
@@ -279,20 +284,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         .then((res) => {
           setAuthSession(res.access_token, res.refresh_token, res.user);
           // Strip ?ticket=... immediately so user never sees ticket in address bar
-          const cleanUrl = window.location.pathname;
-          window.history.replaceState({}, document.title, cleanUrl);
+          const currentPath = window.location.pathname;
+          window.history.replaceState({}, document.title, currentPath);
+
+          // If the user arrived at /login or root, navigate them to dashboard or onboarding
+          if (currentPath === '/login' || currentPath === '/') {
+            const dest = res.user?.onboarding_completed === false ? '/onboarding' : '/dashboard';
+            window.location.href = dest;
+          }
         })
         .catch((err) => {
           console.error('GrowthOS ticket exchange failed:', err);
-          const cleanUrl = window.location.pathname;
-          window.history.replaceState({}, document.title, cleanUrl);
+          const errorMsg = encodeURIComponent(err.message || 'Authentication ticket exchange failed');
+          window.location.href = `/login?auth_error=${errorMsg}`;
         })
         .finally(() => {
           setIsExchangingTicket(false);
         });
-    } else if (authError) {
-      const cleanUrl = window.location.pathname;
-      window.history.replaceState({}, document.title, cleanUrl);
     }
   }, []);
 

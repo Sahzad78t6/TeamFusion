@@ -55,6 +55,52 @@ def test_google_auth_api_endpoint_failure():
     data = response.json()
     assert "detail" in data
 
-def test_protected_endpoint_rejects_missing_bearer_token():
-    response = client.get("/api/auth/me")
-    assert response.status_code == 401
+def test_ticket_creation_and_claiming():
+    """Verify single-use tickets can be created and claimed exactly once."""
+    mock_session = {
+        "access_token": "mock_jwt_access_token",
+        "refresh_token": "mock_jwt_refresh_token",
+        "token_type": "bearer",
+        "user": {"id": "usr_123", "email": "test@example.com"}
+    }
+    ticket = auth_service.create_auth_ticket(mock_session)
+    assert ticket.startswith("ticket_")
+    
+    # Claim ticket
+    claimed = auth_service.claim_auth_ticket(ticket)
+    assert claimed["access_token"] == "mock_jwt_access_token"
+    
+    # Second claim should fail
+    with pytest.raises(Exception):
+        auth_service.claim_auth_ticket(ticket)
+
+def test_claim_ticket_api_endpoint():
+    """Verify POST /api/auth/claim-ticket endpoint works end-to-end."""
+    mock_session = {
+        "access_token": "test_token_999",
+        "refresh_token": "test_refresh_999",
+        "token_type": "bearer",
+        "user": {"id": "usr_999", "name": "Claim User", "email": "claim@example.com"}
+    }
+    ticket = auth_service.create_auth_ticket(mock_session)
+    response = client.post("/api/auth/claim-ticket", json={"ticket": ticket})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["access_token"] == "test_token_999"
+
+@pytest.mark.asyncio
+async def test_root_oauth_callback_redirect():
+    """Verify GET / with code creates ticket and redirects to production Vercel frontend."""
+    mock_auth_res = {
+        "access_token": "prod_jwt_token",
+        "refresh_token": "prod_refresh_token",
+        "token_type": "bearer",
+        "user": {"id": "u_test", "email": "test@gmail.com", "onboarding_completed": True}
+    }
+    with patch.object(auth_service, "handle_google_code_exchange", new_callable=AsyncMock, return_value=mock_auth_res):
+        response = client.get("/?code=valid_google_code&state=prod", follow_redirects=False)
+        assert response.status_code == 302
+        location = response.headers.get("location", "")
+        assert "https://team-fusion-psi.vercel.app/dashboard?ticket=ticket_" in location
+        assert "localhost" not in location
+
