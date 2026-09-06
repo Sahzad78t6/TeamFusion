@@ -1,4 +1,5 @@
 import asyncio
+import pytest
 from app.agents.reflection.agent import reflection_agent, extract_sentiment_scores
 from app.agents.reflection.tools import compute_burnout_risk_indicator
 
@@ -21,7 +22,9 @@ def test_extract_sentiment_scores_positive():
     assert risk == "LOW"
     print("[PASS] test_extract_sentiment_scores_positive")
 
+@pytest.mark.asyncio
 async def test_reflection_process_negative_notes_not_low_risk():
+
     user_id = "test_sentiment_user"
     notes = "I feel stressed and burnt out and overwhelmed"
     res = await reflection_agent.process_and_save(user_id, {"notes": notes})

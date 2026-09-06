@@ -16,6 +16,9 @@ from app.api import (
     opportunity,
     notification,
     copilot,
+    analytics,
+    skills,
+    activity,
     health
 )
 
@@ -55,6 +58,9 @@ api_router.include_router(recommendation.router)
 api_router.include_router(opportunity.router)
 api_router.include_router(notification.router)
 api_router.include_router(copilot.router)
+api_router.include_router(analytics.router)
+api_router.include_router(skills.router)
+api_router.include_router(activity.router)
 api_router.include_router(health.router)
 
 app.include_router(api_router)
@@ -69,12 +75,51 @@ app.include_router(recommendation.router)
 app.include_router(opportunity.router)
 app.include_router(notification.router)
 app.include_router(copilot.router)
+app.include_router(analytics.router)
+app.include_router(skills.router)
+app.include_router(activity.router)
 app.include_router(health.router)
 
+
+
+import urllib.parse
+from fastapi.responses import RedirectResponse
+from app.services.auth_service import auth_service
+
 @app.get("/", tags=["Root"])
-async def root():
+async def root(code: str | None = None, state: str | None = None, error: str | None = None):
+    # Process Google OAuth Callback ONLY when authorization code or OAuth error is present
+    if code or error:
+        frontend_base = "http://localhost:5173/login" if (state and state.startswith("dev")) else "https://team-fusion-psi.vercel.app/login"
+        
+        if error:
+            error_clean = urllib.parse.quote(f"Google OAuth Error: {error}")
+            return RedirectResponse(url=f"{frontend_base}?auth_error={error_clean}", status_code=302)
+
+        try:
+            # Authorized Redirect URI configured in Google Cloud is https://teamfusion-96bi.onrender.com
+            redirect_uri = "https://teamfusion-96bi.onrender.com"
+            res = await auth_service.handle_google_code_exchange(code=code, redirect_uri=redirect_uri)
+            
+            token = res.get("access_token", "")
+            refresh_token = res.get("refresh_token", "")
+            user_id = res.get("user", {}).get("id", "")
+            user_name = urllib.parse.quote(res.get("user", {}).get("name", ""))
+            user_email = urllib.parse.quote(res.get("user", {}).get("email", ""))
+
+            redirect_target = (
+                f"{frontend_base}?access_token={token}&refresh_token={refresh_token}"
+                f"&user_id={user_id}&user_name={user_name}&user_email={user_email}"
+            )
+            return RedirectResponse(url=redirect_target, status_code=302)
+        except Exception as e:
+            error_clean = urllib.parse.quote(str(e))
+            return RedirectResponse(url=f"{frontend_base}?auth_error={error_clean}", status_code=302)
+
+    # Standard Render Health & Status Response when no OAuth parameters exist
     return {
         "app": settings.APP_NAME,
         "status": "online",
         "docs": "/docs"
     }
+

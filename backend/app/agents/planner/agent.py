@@ -65,20 +65,29 @@ class PlannerAgent:
                 data={"error": str(e)},
             )
 
-    async def create_and_save_plan(self, user_id: str, goals: list[str] | None = None) -> dict:
-        """Legacy method — delegates to execute()."""
-        input_data = {"user_id": user_id}
-        if goals:
-            input_data["goals"] = goals
-            
-        result = await self.execute(input_data)
+    async def generate_and_store_plan(self, user_id: str, goals: list[str] | None = None) -> dict:
+        result = await self.execute({"user_id": user_id, "goals": goals})
+        if result.success and result.data:
+            from app.services.activity_service import activity_service
+            await activity_service.log_event(user_id, "plan_created", {"task_count": len(result.data.get("tasks", []))})
         return result.data if result.success else {}
 
+    async def get_today_plan(self, user_id: str) -> dict:
+        plans = await planner_repository.get_plans_by_user(user_id)
+        if plans:
+            return plans[-1]
+        return await self.generate_and_store_plan(user_id)
+
     async def get_plan(self, user_id: str) -> Roadmap | None:
-        data = await planner_repository.get_by_user_id(user_id)
+        data = await planner_repository.get_by_user_id(user_id) if hasattr(planner_repository, 'get_by_user_id') else await self.get_today_plan(user_id)
         if data:
             return Roadmap(tasks=data.get("tasks", []), ai_feedback=data.get("ai_feedback", ""))
         return None
 
+    async def update_task_status(self, user_id: str, task_id: str, completed: bool = True) -> dict:
+        from app.services.planner_service import planner_service
+        return await planner_service.toggle_task_completion(user_id, task_id, completed)
+
 
 planner_agent = PlannerAgent()
+

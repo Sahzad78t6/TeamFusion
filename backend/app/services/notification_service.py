@@ -14,4 +14,16 @@ class NotificationService:
             "unread_count": unread
         }
 
+    async def mark_as_read(self, user_id: str, notification_id: str) -> dict:
+        from app.database.repositories.notification_repository import notification_repository
+        success = await notification_repository.mark_as_read(user_id, notification_id)
+        return {"success": success, "notification_id": notification_id}
+
+    async def mark_all_as_read(self, user_id: str) -> dict:
+        from app.database.repositories.notification_repository import notification_repository
+        success = await notification_repository.mark_all_as_read(user_id)
+        return {"success": success}
+
+
 notification_service = NotificationService()
+

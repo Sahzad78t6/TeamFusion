@@ -87,7 +87,10 @@ export interface LearningResource {
   isBookmarked: boolean;
   isLiked: boolean;
   progressPercentage: number;
+  matchScore?: number;
+  whyRecommended?: string;
 }
+
 
 export interface Opportunity {
   id: string;

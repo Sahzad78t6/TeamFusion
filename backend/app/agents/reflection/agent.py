@@ -61,11 +61,25 @@ class ReflectionAgent:
             )
             database_updates.append("analytics")
 
-            # If burnout risk is high, save a memory fact
+            # If burnout risk is high or notable insights exist, save a memory fact
             if ml_results["burnout_risk_level"] == "high":
                 fact = f"User showed high burnout risk on {get_utc_now()[:10]} due to low mood and energy."
                 memory_manager.save_user_fact(user_id, fact, {"type": "burnout_risk"})
                 memory_updates.append(fact)
+
+            # Log activity event
+            from app.services.activity_service import activity_service
+            await activity_service.log_event(
+                user_id=user_id,
+                event_type="reflection_submitted",
+                metadata={"mood": input_data.get("mood", "neutral"), "insight": insight}
+            )
+
+            # Extract memory snippet for Mem0
+            from app.memory.service import memory_service
+            notes = input_data.get("reflection_text") or input_data.get("notes") or input_data.get("summary") or ""
+            if len(notes) > 10:
+                memory_service.add_memory(user_id, f"Learner reflection note: '{notes[:120]}'")
 
             return AgentResponse(
                 success=True,
@@ -85,11 +99,53 @@ class ReflectionAgent:
                 data={"error": str(e)},
             )
 
+    async def process_reflection(self, user_id: str, reflection_text: str, mood: str = "neutral") -> dict:
+        input_data = {
+            "user_id": user_id,
+            "reflection_text": reflection_text,
+            "summary": reflection_text,
+            "mood": mood,
+            "notes": reflection_text
+        }
+        res = await self.execute(input_data)
+        return res.data if res.success else {}
+
+    async def get_user_reflections(self, user_id: str) -> list[dict]:
+        return await reflection_repository.get_reflections_by_user(user_id)
+
     async def process_and_save(self, user_id: str, data: dict) -> dict:
         """Legacy method — delegates to execute()."""
-        input_data = {"user_id": user_id, **data}
+        notes = data.get("notes") or data.get("reflection") or ""
+        if notes and "mood_score" not in data:
+            mood, energy = extract_sentiment_scores(notes)
+            data_with_scores = {"mood_score": mood, "energy_level": energy, **data}
+        else:
+            data_with_scores = data
+            mood = data.get("mood_score", 4)
+
+        input_data = {"user_id": user_id, **data_with_scores}
         result = await self.execute(input_data)
-        return result.data if result.success else {}
+        doc = dict(result.data) if result.success and isinstance(result.data, dict) else {}
+        if doc and "mood_score" not in doc:
+            doc["mood_score"] = mood
+        return doc
 
 
 reflection_agent = ReflectionAgent()
+
+
+def extract_sentiment_scores(notes: str) -> tuple[int, int]:
+    """Helper to estimate mood and energy scores from notes text."""
+    text = (notes or "").lower()
+    negative_words = ["stressed", "burnt out", "exhausted", "overwhelmed", "tired", "sad", "bad", "frustrated"]
+    positive_words = ["great", "energized", "loving", "happy", "productive", "good", "excited", "awesome"]
+
+    neg_count = sum(1 for word in negative_words if word in text)
+    pos_count = sum(1 for word in positive_words if word in text)
+
+    if neg_count > pos_count:
+        return (1, 1)
+    elif pos_count > neg_count:
+        return (5, 5)
+    return (3, 3)
+

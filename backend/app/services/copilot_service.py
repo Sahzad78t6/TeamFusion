@@ -19,62 +19,44 @@ logger = logging.getLogger(__name__)
 class CopilotService:
     async def respond(self, user_id: str, message: str, raise_on_error: bool = False) -> CopilotResponse:
         logger.info(f"Copilot received message from {user_id}: {message}")
-        
-        # 1. Routing
-        route_result = await supervisor_agent.execute({"user_id": user_id, "message": message})
-        next_agent = route_result.data.get("routed_to", "conversation")
-        
-        logger.info(f"Supervisor routed query to: {next_agent}")
-        
-        # 2. Execution
-        response_data = None
-        reply_message = ""
-        
+
         try:
-            if next_agent == "user_understanding":
-                # For MVP, simulate passing the message as onboarding/goal update
-                result = await user_understanding_agent.execute({"user_id": user_id, "goal": message})
-                response_data = result.data
-                reply_message = "I've updated your career profile and goals based on what you shared."
-                
-            elif next_agent == "planner":
-                result = await planner_agent.execute({"user_id": user_id, "goals": [message]})
-                response_data = result.data
-                reply_message = result.data.get("ai_feedback", "Here is your updated learning roadmap.")
-                
-            elif next_agent == "learning_curator":
-                result = await learning_curator_agent.execute({"user_id": user_id})
-                response_data = result.data
-                reply_message = result.data.get("ai_feedback", "I've curated some new learning resources for you.")
-                
-            elif next_agent == "opportunity":
-                result = await opportunity_agent.execute({"user_id": user_id})
-                response_data = result.data
-                reply_message = result.data.get("ai_feedback", "Here are some opportunities that match your profile.")
-                
-            elif next_agent == "reflection":
-                result = await reflection_agent.execute({"user_id": user_id, "reflection": message})
-                response_data = result.data
-                reply_message = result.data.get("ai_insight", "Thanks for sharing your reflection. I've logged it.")
-                
-            else:
-                # General conversation fallback
-                reply_message = llm_provider.generate(
+            route_result = await supervisor_agent.execute({"user_id": user_id, "message": message})
+
+            if not route_result.success:
+                error_msg = route_result.data.get("error", "Unknown error in Supervisor")
+                if raise_on_error:
+                    raise RuntimeError(error_msg)
+                return CopilotResponse(agent="supervisor", message=f"Supervisor encountered an error: {error_msg}")
+
+            next_agent = route_result.data.get("routed_to", "conversation")
+            summary = route_result.data.get("summary", "")
+            payload = route_result.data.get("payload") or route_result.data.get("supervisor_response", {}).get("data")
+
+            if next_agent == "conversation" or not summary:
+                # Generate conversational response using LLM Provider
+                llm_reply = llm_provider.generate(
                     prompt=message,
-                    system_instruction="You are GrowthOS Copilot, a helpful AI career coach. Be concise and supportive."
+                    system_instruction="You are GrowthOS Copilot, an AI career & learning coach. Provide actionable, concise advice."
                 )
-                
+                reply_message = llm_reply or summary or "How can I assist your learning journey today?"
+            else:
+                reply_message = summary
+
+            return CopilotResponse(
+                agent=next_agent,
+                message=reply_message,
+                data=payload if isinstance(payload, (dict, list)) else None
+            )
+
         except Exception as e:
-            logger.error(f"Agent execution failed: {e}", exc_info=True)
+            logger.error(f"CopilotService processing failed: {e}", exc_info=True)
             if raise_on_error:
                 raise
-            reply_message = f"I'm sorry, I encountered an error while processing that request: {str(e)}"
-            
-        return CopilotResponse(
-            agent=next_agent,
-            message=reply_message,
-            data=response_data,
-        )
+            return CopilotResponse(
+                agent="supervisor",
+                message=f"I'm sorry, I encountered an error while processing that request: {str(e)}"
+            )
 
 
-copilot_service = CopilotService()
+copilot_service = CopilotService()

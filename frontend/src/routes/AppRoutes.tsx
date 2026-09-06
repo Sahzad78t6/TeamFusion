@@ -14,6 +14,7 @@ import { Planner } from '../pages/Planner/Planner';
 import { Reflection } from '../pages/Reflection/Reflection';
 import { Notifications } from '../pages/Notifications/Notifications';
 import { Profile } from '../pages/Profile/Profile';
+import { Analytics } from '../pages/Analytics/Analytics';
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -34,8 +35,9 @@ export const AppRoutes: React.FC = () => {
         <Route path="/reflection" element={<Reflection />} />
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/profile" element={<Profile />} />
-        <Route path="/analytics" element={<Profile />} />
+        <Route path="/analytics" element={<Analytics />} />
       </Route>
+
 
       {/* Fallback redirect */}
       <Route path="*" element={<Navigate to="/" replace />} />

@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { NavLink, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Zap, Mail, Lock, ArrowRight, Github, Chrome, AlertCircle } from 'lucide-react';
 import { Button } from '../../components/common/Button';
-import { loginApi } from '../../services/api';
+import { loginApi, getMeApi } from '../../services/api';
 import { useApp } from '../../context/AppContext';
 
 export const Login: React.FC = () => {
@@ -14,6 +14,55 @@ export const Login: React.FC = () => {
 
   const { setAuthSession } = useApp();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    // Check if returning from Google OAuth Redirect
+    const accessToken = searchParams.get('access_token');
+    const refreshToken = searchParams.get('refresh_token');
+    const userId = searchParams.get('user_id');
+    const userName = searchParams.get('user_name');
+    const userEmail = searchParams.get('user_email');
+    const authError = searchParams.get('auth_error');
+
+    if (authError) {
+      setErrorMessage(decodeURIComponent(authError));
+    } else if (accessToken && userId) {
+      const user = {
+        id: userId,
+        name: userName ? decodeURIComponent(userName) : 'GrowthOS User',
+        email: userEmail ? decodeURIComponent(userEmail) : '',
+      };
+      setAuthSession(accessToken, refreshToken || '', user);
+      navigate('/dashboard', { replace: true });
+    }
+  }, [searchParams, setAuthSession, navigate]);
+
+  const handleGoogleLogin = () => {
+    const googleClientId = (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID || '';
+    const isDev = window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1');
+    
+    // The Authorized Redirect URI configured in Google Cloud is EXACTLY: https://teamfusion-96bi.onrender.com
+    const redirectUri = 'https://teamfusion-96bi.onrender.com';
+    const state = isDev ? 'dev' : 'prod';
+
+    if (!googleClientId) {
+      // Direct redirect to backend OAuth initiation or fallback warning
+      const backendUrl = (import.meta as any).env?.VITE_API_URL || 'https://teamfusion-96bi.onrender.com';
+      window.location.href = `${backendUrl}/auth/google/login`;
+      return;
+    }
+
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(
+      googleClientId
+    )}&redirect_uri=${encodeURIComponent(
+      redirectUri
+    )}&response_type=code&scope=${encodeURIComponent(
+      'openid email profile'
+    )}&state=${encodeURIComponent(state)}&prompt=select_account`;
+
+    window.location.href = authUrl;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -123,7 +172,11 @@ export const Login: React.FC = () => {
               <button className="flex items-center justify-center gap-2 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-semibold text-slate-300 transition-colors">
                 <Github className="w-4 h-4" /> GitHub
               </button>
-              <button className="flex items-center justify-center gap-2 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-semibold text-slate-300 transition-colors">
+              <button 
+                type="button"
+                onClick={handleGoogleLogin}
+                className="flex items-center justify-center gap-2 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-semibold text-slate-300 transition-colors"
+              >
                 <Chrome className="w-4 h-4 text-red-400" /> Google
               </button>
             </div>

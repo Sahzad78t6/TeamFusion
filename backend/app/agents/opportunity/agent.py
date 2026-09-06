@@ -54,6 +54,10 @@ class OpportunityAgent:
                 data={"error": str(e)},
             )
 
+    async def get_matched_opportunities(self, user_id: str) -> dict:
+        result = await self.execute({"user_id": user_id})
+        return result.data if result.success else {"opportunities": []}
+
     async def match(self, user_id: str, identity: dict) -> dict:
         """Legacy method — delegates to execute()."""
         result = await self.execute({"user_id": user_id})
@@ -61,3 +65,4 @@ class OpportunityAgent:
 
 
 opportunity_agent = OpportunityAgent()
+

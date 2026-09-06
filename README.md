@@ -1,12 +1,50 @@
-# GrowthOS
-
-A starter project structure for GrowthOS.
-# 🚀 GrowthOS
-### The AI That Curates Your Future
-
+# 🚀 GrowthOS — Agentic AI Growth Operating System
 > **An Agentic AI Growth Curator that helps users become the person they aspire to be by understanding their aspirations, habits, and evolving identity.**
 
 ---
+
+## ⚡ Quickstart & Setup
+
+### Environment Variables
+Copy `.env.example` to `.env` in root, `backend/`, and `frontend/`:
+```bash
+cp .env.example .env
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env
+```
+
+### Running Backend (FastAPI + MongoDB + Agents)
+```bash
+cd backend
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+* Interactive API Documentation (Swagger): `http://localhost:8000/docs`
+
+### Running Backend Tests
+```bash
+cd backend
+python -m pytest app/tests
+```
+
+### Running Frontend (React + TypeScript + Vite)
+```bash
+cd frontend
+npm install
+npm run dev
+```
+* App running at `http://localhost:3000` (or `http://localhost:5173`)
+
+### Building Frontend for Production
+```bash
+cd frontend
+npm run build
+```
+
+---
+
 
 # 📌 Problem Statement
 

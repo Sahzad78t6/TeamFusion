@@ -96,6 +96,24 @@ export async function loginApi(email: string, password: string): Promise<AuthTok
   return data;
 }
 
+export async function loginWithGoogleApi(payload: { credential?: string; code?: string; redirect_uri?: string }): Promise<AuthTokenResponse> {
+  const response = await safeFetch(`${API_BASE_URL}/auth/google`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.detail || 'Google sign-in failed.');
+  }
+
+  return data;
+}
+
 export async function getMeApi(token: string): Promise<AuthUserResponse> {
   const response = await safeFetch(`${API_BASE_URL}/auth/me`, {
     method: 'GET',
@@ -278,6 +296,105 @@ export async function getNotificationsApi(token: string): Promise<any> {
   return data;
 }
 
+export async function markNotificationReadApi(token: string, notificationId: string): Promise<any> {
+  const response = await safeFetch(`${API_BASE_URL}/notification/${notificationId}/read`, {
+    method: 'PATCH',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.detail || 'Failed to mark notification as read.');
+  }
+  return data;
+}
+
+export async function markAllNotificationsReadApi(token: string): Promise<any> {
+  const response = await safeFetch(`${API_BASE_URL}/notification/read-all`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.detail || 'Failed to mark all notifications as read.');
+  }
+  return data;
+}
+
+// Analytics API
+export async function getAnalyticsApi(token: string): Promise<any> {
+  const response = await safeFetch(`${API_BASE_URL}/analytics`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.detail || 'Failed to fetch analytics.');
+  }
+  return data.data || data;
+}
+
+// Task Toggle API
+export async function toggleTaskApi(token: string, taskId: string, completed: boolean): Promise<any> {
+  const response = await safeFetch(`${API_BASE_URL}/planner/tasks/${taskId}`, {
+    method: 'PATCH',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ completed }),
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.detail || 'Failed to update task completion state.');
+  }
+  return data;
+}
+
+export async function getPlansApi(token: string): Promise<any> {
+  const response = await safeFetch(`${API_BASE_URL}/planner`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.detail || 'Failed to fetch planner entries.');
+  }
+  return data;
+}
+
+export async function getReflectionsApi(token: string): Promise<any> {
+  const response = await safeFetch(`${API_BASE_URL}/reflection`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.detail || 'Failed to fetch reflections.');
+  }
+  return data;
+}
+
 export interface CopilotResponse {
   agent: string;
   message: string;
@@ -300,4 +417,4 @@ export async function chatWithCopilotApi(token: string, message: string): Promis
   const errorDetail = 'detail' in data ? data.detail : undefined;
   if (!response.ok) throw new Error(errorDetail || 'The AI Copilot could not complete that request.');
   return data as CopilotResponse;
-}
+}

@@ -21,22 +21,20 @@ class LearningCuratorAgent:
         user_id = input_data.get("user_id", "")
         
         try:
+            topic = input_data.get("topic", "")
             plans = await planner_repository.get_plans_by_user(user_id)
             plan = plans[-1] if plans else {}
-            target_role = plan.get("target_role", "AI Engineer")
+            target_role = plan.get("target_role", "Machine Learning Engineer")
             tasks = plan.get("tasks", [])
 
-            resources = await curate_resources(target_role, tasks)
-            
-            bundle = LearningBundle(
-                resources=resources,
-                ai_feedback="Curated learning resources based on your roadmap."
-            )
-            
+            resources = await curate_resources(target_role=target_role, tasks=tasks, user_id=user_id, topic=topic)
+
             bundle_doc = {
                 "user_id": user_id,
                 "target_role": target_role,
-                **bundle.model_dump()
+                "resources": resources,
+                "recommendations": resources,
+                "ai_feedback": f"Curated {len(resources)} personalized resources for your learning goals."
             }
             await learning_repository.save_learning(user_id, bundle_doc)
 
@@ -48,6 +46,7 @@ class LearningCuratorAgent:
                 database_updates=["recommendations"],
                 next_recommended_agent="opportunity",
             )
+
         except Exception as e:
             logger.error(f"LearningCuratorAgent.execute() failed: {e}", exc_info=True)
             return AgentResponse(
@@ -56,6 +55,10 @@ class LearningCuratorAgent:
                 timestamp=get_utc_now(),
                 data={"error": str(e)},
             )
+
+    async def curate_resources(self, user_id: str, topic: str = "") -> dict:
+        result = await self.execute({"user_id": user_id, "topic": topic})
+        return result.data if result.success else {"resources": []}
 
     async def curate_and_save(self, user_id: str) -> dict:
         """Legacy method — delegates to execute()."""
@@ -77,3 +80,4 @@ class LearningCuratorAgent:
 
 
 learning_curator_agent = LearningCuratorAgent()
+

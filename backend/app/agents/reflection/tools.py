@@ -28,3 +28,13 @@ async def generate_reflection_insights(data: dict) -> str:
     elif mood <= 2:
         return "It sounds like today was tough. Remember to take breaks and rest. Progress isn't always linear."
     return "Good effort today. Reflect on what worked well and adjust your approach for tomorrow."
+
+
+def compute_burnout_risk_indicator(mood: int, energy: int, study_hours: float = 0.0) -> str:
+    """Helper to compute burnout risk level based on mood, energy, and hours."""
+    if mood <= 2 or energy <= 2 or study_hours >= 10.0:
+        return "HIGH_RISK"
+    elif mood == 3 or energy == 3 or study_hours >= 6.0:
+        return "MODERATE"
+    return "LOW"
+

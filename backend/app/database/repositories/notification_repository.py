@@ -65,4 +65,18 @@ class NotificationRepository:
                     return True
             return False
 
+    async def mark_all_as_read(self, user_id: str) -> bool:
+        collection = get_collection(COLLECTION_NOTIFICATIONS)
+        if collection is not None:
+            res = await collection.update_many({"user_id": user_id, "read": False}, {"$set": {"read": True}})
+            return res.modified_count > 0
+        else:
+            mock_store = get_mock_collection(COLLECTION_NOTIFICATIONS)
+            for n in mock_store:
+                if n.get("user_id") == user_id:
+                    n["read"] = True
+            return True
+
+
 notification_repository = NotificationRepository()
+

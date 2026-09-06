@@ -25,6 +25,12 @@ import {
   logoutApi,
   submitOnboardingApi,
   getDashboardApi,
+  getAnalyticsApi,
+  toggleTaskApi,
+  createReflectionApi,
+  getReflectionsApi,
+  markNotificationReadApi,
+  getOpportunitiesApi,
   OnboardingPayload,
 } from '../services/api';
 
@@ -129,6 +135,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           ...prev,
           growthPredictionScore: Math.round(data.analytics.growth_score || prev.growthPredictionScore),
           learningHoursTotal: data.analytics.weekly_hours_logged || prev.learningHoursTotal,
+          burnoutRiskPercentage: Math.round(data.analytics.burnout_risk_score || prev.burnoutRiskPercentage),
+          consistencyRate: Math.min(98, Math.round(data.analytics.streak_days ? data.analytics.streak_days * 3.5 : prev.consistencyRate)),
         }));
       }
       if (data.roadmap && data.roadmap.tasks) {
@@ -180,6 +188,68 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           }))
         );
       }
+
+      // Fetch analytics API
+      try {
+        const analyticsData = await getAnalyticsApi(authToken);
+        if (analyticsData) {
+          setAnalytics((prev) => ({
+            ...prev,
+            growthPredictionScore: Math.round(analyticsData.growth_score || prev.growthPredictionScore),
+            burnoutRiskPercentage: Math.round(analyticsData.burnout_risk_score || prev.burnoutRiskPercentage),
+            learningHoursTotal: analyticsData.weekly_hours_logged || prev.learningHoursTotal,
+          }));
+        }
+      } catch (err) {
+        // Suppress
+      }
+
+      // Fetch opportunities API
+      try {
+        const oppData = await getOpportunitiesApi(authToken);
+        const oppList = oppData?.opportunities || (Array.isArray(oppData) ? oppData : []);
+        if (oppList.length > 0) {
+          setOpportunities(
+            oppList.map((o: any) => ({
+              id: o.id || `opp-${Math.random()}`,
+              title: o.title,
+              type: o.type || 'hackathon',
+              organization: o.organization || 'Global Tech',
+              location: o.location || 'Remote',
+              matchPercentage: Math.round(o.match_score || 88),
+              skillsRequired: o.required_skills || ['Python', 'AI'],
+              deadline: 'In 2 Weeks',
+              description: o.description || '',
+              link: o.url || '#',
+              isFavorite: false,
+            }))
+          );
+        }
+      } catch (err) {
+        // Suppress
+      }
+
+      // Fetch reflections API
+      try {
+        const refList = await getReflectionsApi(authToken);
+        if (Array.isArray(refList) && refList.length > 0) {
+          setReflections(
+            refList.map((r: any) => ({
+              id: r.id,
+              date: r.created_at ? r.created_at.slice(0, 10) : 'Today',
+              mood: r.mood_score <= 2 ? 'stressed' : r.mood_score >= 4 ? 'ecstatic' : 'thoughtful',
+              emoji: r.mood_score <= 2 ? '💡' : r.mood_score >= 4 ? '🚀' : '🧠',
+              prompt: 'Daily Reflection Entry',
+              content: r.reflection || r.notes || r.ai_insight || '',
+              sentimentScore: r.mood_score ? r.mood_score * 20 : 85,
+              keyInsights: r.ai_insight ? [r.ai_insight] : ['Logged to Mem0'],
+            }))
+          );
+        }
+      } catch (err) {
+        // Suppress
+      }
+
     } catch (e) {
       console.warn('Dashboard refresh failed:', e);
     }
@@ -221,9 +291,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [authToken]);
 
   const toggleTask = (taskId: string) => {
+    let nextCompleted = false;
     setTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, isCompleted: !t.isCompleted } : t))
+      prev.map((t) => {
+        if (t.id === taskId) {
+          nextCompleted = !t.isCompleted;
+          return { ...t, isCompleted: nextCompleted };
+        }
+        return t;
+      })
     );
+
+    if (authToken) {
+      toggleTaskApi(authToken, taskId, nextCompleted).catch((err) => {
+        console.warn('Failed to persist task completion:', err);
+      });
+    }
   };
 
   const toggleBookmarkResource = (resourceId: string) => {
@@ -248,16 +331,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setNotifications((prev) =>
       prev.map((n) => (n.id === notifId ? { ...n, isRead: true } : n))
     );
+    if (authToken) {
+      markNotificationReadApi(authToken, notifId).catch((err) => {
+        console.warn('Failed to mark notification as read:', err);
+      });
+    }
   };
 
-  const addReflection = (newRef: Omit<ReflectionEntry, 'id' | 'date'>) => {
+  const addReflection = async (newRef: Omit<ReflectionEntry, 'id' | 'date'>) => {
     const entry: ReflectionEntry = {
       ...newRef,
       id: `ref-${Date.now()}`,
       date: new Date().toLocaleDateString('en-US', { month: 'long', day: '2-digit', year: 'numeric' }),
     };
     setReflections((prev) => [entry, ...prev]);
+
+    if (authToken) {
+      try {
+        await createReflectionApi(authToken, {
+          reflection: newRef.content,
+          mood_score: newRef.mood === 'ecstatic' || newRef.mood === 'happy' ? 5 : newRef.mood === 'stressed' ? 1 : 3,
+          energy_level: 4,
+          wins: newRef.prompt || '',
+          challenges: '',
+          completed_tasks: [],
+          study_hours: 1.5,
+        });
+        await refreshDashboard();
+      } catch (err) {
+        console.warn('Failed to persist reflection entry:', err);
+      }
+    }
   };
+
 
   return (
     <AppContext.Provider

@@ -32,4 +32,24 @@ class PlannerRepository:
             mock_store = get_mock_collection(COLLECTION_PLANS)
             return [item for item in mock_store if item["user_id"] == user_id]
 
+    async def update_task_completion(self, user_id: str, task_id: str, completed: bool) -> bool:
+        collection = get_collection(COLLECTION_PLANS)
+        if collection is not None:
+            res = await collection.update_one(
+                {"user_id": user_id, "tasks.id": task_id},
+                {"$set": {"tasks.$.completed": completed}}
+            )
+            return res.modified_count > 0
+        else:
+            mock_store = get_mock_collection(COLLECTION_PLANS)
+            for plan in mock_store:
+                if plan.get("user_id") == user_id:
+                    for task in plan.get("tasks", []):
+                        if task.get("id") == task_id:
+                            task["completed"] = completed
+                            return True
+            return False
+
+
 planner_repository = PlannerRepository()
+
