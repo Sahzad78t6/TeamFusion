@@ -3,12 +3,12 @@ import { NavLink, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Zap, Mail, Lock, ArrowRight, Github, Chrome, AlertCircle } from 'lucide-react';
 import { Button } from '../../components/common/Button';
-import { loginApi, getMeApi } from '../../services/api';
+import { loginApi } from '../../services/api';
 import { useApp } from '../../context/AppContext';
 
 export const Login: React.FC = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('alex.rivera@growthos.ai');
+  const [password, setPassword] = useState('••••••••••••');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -40,24 +40,25 @@ export const Login: React.FC = () => {
 
   const handleGoogleLogin = () => {
     const googleClientId = (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID || '';
+    const isDev = window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1');
     const redirectUri = (import.meta as any).env?.VITE_GOOGLE_REDIRECT_URI || 'https://teamfusion-96bi.onrender.com';
+    const state = isDev ? 'dev' : 'prod';
 
-    if (!googleClientId) {
-      setErrorMessage(
-        'Google OAuth Client ID (VITE_GOOGLE_CLIENT_ID) is not configured in environment variables.'
-      );
-      return;
+    if (googleClientId) {
+      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(
+        googleClientId
+      )}&redirect_uri=${encodeURIComponent(
+        redirectUri
+      )}&response_type=code&scope=${encodeURIComponent(
+        'openid email profile'
+      )}&state=${encodeURIComponent(state)}&prompt=select_account`;
+      window.location.href = authUrl;
+    } else {
+      // Seamless fallback to backend Google OAuth initiation route
+      const backendUrl = (import.meta as any).env?.VITE_API_URL || 'https://teamfusion-96bi.onrender.com';
+      const cleanBackendUrl = backendUrl.replace(/\/api\/?$/, '');
+      window.location.href = `${cleanBackendUrl}/auth/google/login?state=${state}`;
     }
-
-    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(
-      googleClientId
-    )}&redirect_uri=${encodeURIComponent(
-      redirectUri
-    )}&response_type=code&scope=${encodeURIComponent(
-      'openid email profile'
-    )}&prompt=select_account`;
-
-    window.location.href = authUrl;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -66,12 +67,8 @@ export const Login: React.FC = () => {
     setIsLoading(true);
 
     try {
-      // Call Supabase FastAPI Login Endpoint
       const res = await loginApi(email, password);
-
-      // Store session in AppContext and localStorage
       setAuthSession(res.access_token, res.refresh_token, res.user);
-
       setIsLoading(false);
       navigate('/dashboard');
     } catch (err: any) {

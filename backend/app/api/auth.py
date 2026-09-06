@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, Header
+import urllib.parse
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
 from app.schemas.auth import SignupRequest, LoginRequest, TokenResponse
 from app.schemas.user import UserResponse
@@ -32,8 +34,24 @@ async def google_login_api(payload: GoogleLoginPayload):
         redirect_uri = payload.redirect_uri or settings.GOOGLE_OAUTH_REDIRECT_URI
         return await auth_service.handle_google_code_exchange(payload.code, redirect_uri)
     else:
-        from fastapi import HTTPException
         raise HTTPException(status_code=400, detail="Either 'credential' (ID token) or 'code' (authorization code) is required.")
+
+@router.get("/google/login")
+async def google_login_redirect(state: str | None = "prod"):
+    client_id = settings.GOOGLE_CLIENT_ID
+    if not client_id:
+        raise HTTPException(status_code=500, detail="GOOGLE_CLIENT_ID is not configured on the backend server.")
+    redirect_uri = settings.GOOGLE_OAUTH_REDIRECT_URI
+    auth_url = (
+        f"https://accounts.google.com/o/oauth2/v2/auth?"
+        f"client_id={urllib.parse.quote(client_id)}&"
+        f"redirect_uri={urllib.parse.quote(redirect_uri)}&"
+        f"response_type=code&"
+        f"scope={urllib.parse.quote('openid email profile')}&"
+        f"state={urllib.parse.quote(state or 'prod')}&"
+        f"prompt=select_account"
+    )
+    return RedirectResponse(url=auth_url, status_code=302)
 
 @router.get("/me", response_model=UserResponse)
 async def get_me_api(current_user_id: str = Depends(get_current_user_id)):
@@ -42,4 +60,3 @@ async def get_me_api(current_user_id: str = Depends(get_current_user_id)):
 @router.post("/logout")
 async def logout_api(current_user_id: str = Depends(get_current_user_id)):
     return success_response(message="Logged out successfully")
-
