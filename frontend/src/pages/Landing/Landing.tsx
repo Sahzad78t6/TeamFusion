@@ -87,6 +87,9 @@ export const Landing: React.FC = () => {
           <NavLink to="/login">
             <Button variant="ghost" size="sm">Sign In</Button>
           </NavLink>
+          <NavLink to="/signup">
+            <Button variant="outline" size="sm">Sign Up</Button>
+          </NavLink>
           <NavLink to="/onboarding">
             <Button variant="glow" size="sm" rightIcon={<ArrowRight className="w-4 h-4" />}>
               Launch GrowthOS

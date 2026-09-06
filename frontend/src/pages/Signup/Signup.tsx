@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Zap, Mail, Lock, User, ArrowRight, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Zap, Mail, Lock, User, ArrowRight, CheckCircle2, AlertCircle, Chrome } from 'lucide-react';
 import { Button } from '../../components/common/Button';
 import { signupApi } from '../../services/api';
 import { useApp } from '../../context/AppContext';
@@ -15,6 +15,30 @@ export const Signup: React.FC = () => {
 
   const { setAuthSession } = useApp();
   const navigate = useNavigate();
+
+  const handleGoogleLogin = () => {
+    const googleClientId = (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID || '';
+    const isDev = window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1');
+    const redirectUri = 'https://teamfusion-96bi.onrender.com';
+    const state = isDev ? 'dev' : 'prod';
+
+    if (!googleClientId) {
+      setErrorMessage(
+        'Google OAuth Client ID (VITE_GOOGLE_CLIENT_ID) is not configured in environment variables.'
+      );
+      return;
+    }
+
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(
+      googleClientId
+    )}&redirect_uri=${encodeURIComponent(
+      redirectUri
+    )}&response_type=code&scope=${encodeURIComponent(
+      'openid email profile'
+    )}&state=${encodeURIComponent(state)}&prompt=select_account`;
+
+    window.location.href = authUrl;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,12 +149,27 @@ export const Signup: React.FC = () => {
             </Button>
           </form>
 
-          <p className="text-center text-xs text-slate-400">
-            Already have an account?{' '}
-            <NavLink to="/login" className="text-purple-400 font-bold hover:underline">
-              Sign In
-            </NavLink>
-          </p>
+          <div className="space-y-4">
+            <div className="relative flex items-center justify-center">
+              <div className="border-t border-white/10 w-full" />
+              <span className="bg-[#12141d] px-3 text-[10px] uppercase font-bold text-slate-500">Or continue with</span>
+            </div>
+
+            <button 
+              type="button"
+              onClick={handleGoogleLogin}
+              className="w-full flex items-center justify-center gap-2 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-semibold text-slate-300 transition-colors"
+            >
+              <Chrome className="w-4 h-4 text-red-400" /> Continue with Google
+            </button>
+
+            <p className="text-center text-xs text-slate-400">
+              Already have an account?{' '}
+              <NavLink to="/login" className="text-purple-400 font-bold hover:underline">
+                Sign In
+              </NavLink>
+            </p>
+          </div>
         </div>
 
         {/* Right Info */}

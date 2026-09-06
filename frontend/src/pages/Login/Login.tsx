@@ -47,9 +47,9 @@ export const Login: React.FC = () => {
     const state = isDev ? 'dev' : 'prod';
 
     if (!googleClientId) {
-      // Direct redirect to backend OAuth initiation or fallback warning
-      const backendUrl = (import.meta as any).env?.VITE_API_URL || 'https://teamfusion-96bi.onrender.com';
-      window.location.href = `${backendUrl}/auth/google/login`;
+      setErrorMessage(
+        'Google OAuth Client ID (VITE_GOOGLE_CLIENT_ID) is not configured in environment variables.'
+      );
       return;
     }
 
