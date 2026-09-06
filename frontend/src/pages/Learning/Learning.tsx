@@ -153,9 +153,21 @@ export const Learning: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <Badge variant="purple">AI Curator Agent Active</Badge>
-            <Badge variant="cyan">{learningResources.length} Curated Resources</Badge>
+          <div className="flex items-center gap-2 flex-wrap">
+            {lastCuratedAt ? (
+              <>
+                <Badge variant="purple">Curator Run: {formatTimeAgo(lastCuratedAt)}</Badge>
+                <Badge variant="cyan">{learningResources.length} Resources Generated</Badge>
+                <Badge variant="blue">Skill Focus: {activeGap}</Badge>
+                <Badge variant="amber">Source: YouTube & Technical Web</Badge>
+              </>
+            ) : (
+              <>
+                <Badge variant="outline">AI Curator Ready</Badge>
+                <Badge variant="cyan">{learningResources.length} Resources</Badge>
+                <Badge variant="amber">Source: YouTube & Technical Web</Badge>
+              </>
+            )}
           </div>
           <h1 className="text-3xl font-extrabold text-white mt-2">Learning Curation</h1>
           <p className="text-xs text-slate-400">

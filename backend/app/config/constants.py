@@ -13,6 +13,8 @@ COLLECTION_INSTITUTIONS = "institutions"
 COLLECTION_COHORTS = "cohorts"
 COLLECTION_ASSESSMENTS = "assessments"
 COLLECTION_ASSESSMENT_SUBMISSIONS = "assessment_submissions"
+COLLECTION_LEARNING_ACTIVITY = "learning_activity"
+COLLECTION_AGENT_RUNS = "agent_runs"
 
 # Agent Names
 AGENT_SUPERVISOR = "supervisor"

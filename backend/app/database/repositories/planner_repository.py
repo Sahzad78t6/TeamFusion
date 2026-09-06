@@ -27,10 +27,13 @@ class PlannerRepository:
         collection = get_collection(COLLECTION_PLANS)
         if collection is not None:
             cursor = collection.find({"user_id": user_id})
-            return await cursor.to_list(length=100)
+            docs = await cursor.to_list(length=100)
+            for d in docs:
+                d.pop('_id', None)
+            return docs
         else:
             mock_store = get_mock_collection(COLLECTION_PLANS)
-            return [item for item in mock_store if item["user_id"] == user_id]
+            return [dict(item) for item in mock_store if item["user_id"] == user_id]
 
     async def update_task_completion(self, user_id: str, task_id: str, completed: bool) -> bool:
         collection = get_collection(COLLECTION_PLANS)

@@ -4,11 +4,12 @@ Curates real personalized learning resources tailored to the authenticated user'
 Identity Twin, skill gaps, target role, and learning history.
 """
 import logging
-from app.services.curator_context import curator_context_builder, UserLearningContext
+from app.context_engine import context_engine_service, UserContext
 from app.services.curator_engine import curator_engine
 from app.database.repositories.planner_repository import planner_repository
 from app.database.repositories.learning_repository import learning_repository
 from app.database.repositories.recommendation_repository import recommendation_repository
+from app.database.repositories.agent_run_repository import agent_run_repository
 from app.schemas.models import AgentResponse, LearningBundle
 from app.utils.helpers import get_utc_now, generate_uuid
 
@@ -23,24 +24,37 @@ class LearningCuratorAgent:
         user_id = input_data.get("user_id", "")
         topic = input_data.get("topic", "")
 
-        try:
-            # 1. Build authentic student context from Identity Twin, Profile, and Activity
-            context: UserLearningContext = await curator_context_builder.build(user_id=user_id, topic=topic)
+        # 1. Synthesize student context strictly from authentic MongoDB collections
+        context: UserContext = await context_engine_service.get_user_context(user_id=user_id, topic=topic)
 
+        # 2. Record agent run telemetry
+        run_record = await agent_run_repository.start_run(
+            user_id=user_id,
+            agent_name="learning_curator",
+            skills_considered=[context.primary_gap, context.secondary_gap],
+            metadata={
+                "target_role": context.target_role,
+                "learning_style": context.learning_style,
+                "context_hash": context.context_hash
+            }
+        )
+        curation_run_id = run_record["id"]
+
+        try:
             logger.info(
-                f"[CURATOR_START] user_id={user_id[:8]}... target_role='{context.target_role}' "
-                f"primary_gap='{context.primary_gap}' style='{context.learning_style}' "
-                f"hash={context.context_hash}"
+                f"[CURATOR_START] user_id={user_id[:8]}... run_id={curation_run_id} "
+                f"target_role='{context.target_role}' primary_gap='{context.primary_gap}' "
+                f"style='{context.learning_style}' hash={context.context_hash}"
             )
 
-            # 2. Curate candidate resources from YouTube + Web via CuratorEngine
+            # 3. Curate candidate resources from YouTube + Web via CuratorEngine
             resources = await curator_engine.curate_personalized_resources(
                 user_id=user_id,
                 topic=context.primary_gap,
-                target_role=context.target_role
+                target_role=context.target_role,
+                context=context
             )
 
-            curation_run_id = f"run_{generate_uuid()[:8]}"
             bundle_doc = {
                 "user_id": user_id,
                 "curation_run_id": curation_run_id,
@@ -57,7 +71,7 @@ class LearningCuratorAgent:
                 )
             }
 
-            # 3. Persist to MongoDB Atlas collections
+            # 4. Persist to MongoDB Atlas collections
             await learning_repository.save_learning(user_id, bundle_doc)
             await recommendation_repository.save_recommendations(
                 user_id=user_id,
@@ -67,6 +81,14 @@ class LearningCuratorAgent:
                 context_hash=context.context_hash,
                 curation_run_id=curation_run_id,
                 ai_feedback=bundle_doc["ai_feedback"]
+            )
+
+            # 5. Complete agent run telemetry
+            await agent_run_repository.complete_run(
+                run_id=curation_run_id,
+                status="completed",
+                resources_generated=len(resources),
+                metadata_updates={"curation_run_id": curation_run_id}
             )
 
             logger.info(
@@ -79,29 +101,27 @@ class LearningCuratorAgent:
                 agent="learning_curator",
                 timestamp=get_utc_now(),
                 data=bundle_doc,
-                database_updates=["recommendations"],
+                database_updates=["recommendations", "agent_runs"],
                 next_recommended_agent="opportunity",
             )
 
         except Exception as e:
             logger.error(f"[CURATOR_ERROR] user_id={user_id}: {e}", exc_info=True)
-            fallback_context = await curator_context_builder.build(user_id=user_id, topic=topic)
-            fallback_resources = curator_engine._format_domain_seed_resources(fallback_context)
-            curation_run_id = f"run_{generate_uuid()[:8]}"
+            fallback_resources = curator_engine._format_domain_seed_resources(context)
 
             fallback_doc = {
                 "user_id": user_id,
                 "curation_run_id": curation_run_id,
-                "target_role": fallback_context.target_role,
-                "primary_gap": fallback_context.primary_gap,
-                "learning_style": fallback_context.learning_style,
-                "context_hash": fallback_context.context_hash,
+                "target_role": context.target_role,
+                "primary_gap": context.primary_gap,
+                "learning_style": context.learning_style,
+                "context_hash": context.context_hash,
                 "resources": fallback_resources,
                 "recommendations": fallback_resources,
                 "generated_at": get_utc_now(),
                 "ai_feedback": (
-                    f"Curated foundational resources for your '{fallback_context.target_role}' goal "
-                    f"targeting your '{fallback_context.primary_gap}' gap."
+                    f"Curated foundational resources for your '{context.target_role}' goal "
+                    f"targeting your '{context.primary_gap}' gap."
                 )
             }
 
@@ -109,11 +129,17 @@ class LearningCuratorAgent:
                 await recommendation_repository.save_recommendations(
                     user_id=user_id,
                     recommendations=fallback_resources,
-                    target_role=fallback_context.target_role,
-                    primary_gap=fallback_context.primary_gap,
-                    context_hash=fallback_context.context_hash,
+                    target_role=context.target_role,
+                    primary_gap=context.primary_gap,
+                    context_hash=context.context_hash,
                     curation_run_id=curation_run_id,
                     ai_feedback=fallback_doc["ai_feedback"]
+                )
+                await agent_run_repository.complete_run(
+                    run_id=curation_run_id,
+                    status="fallback",
+                    resources_generated=len(fallback_resources),
+                    metadata_updates={"error": str(e)}
                 )
             except Exception as save_err:
                 logger.warning(f"Failed to persist fallback recommendations: {save_err}")
@@ -123,8 +149,9 @@ class LearningCuratorAgent:
                 agent="learning_curator",
                 timestamp=get_utc_now(),
                 data=fallback_doc,
-                database_updates=["recommendations"],
+                database_updates=["recommendations", "agent_runs"],
             )
+
 
     async def curate_resources(self, user_id: str, topic: str = "") -> dict:
         result = await self.execute({"user_id": user_id, "topic": topic})

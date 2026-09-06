@@ -37,9 +37,12 @@ class ReflectionRepository:
         collection = get_collection(COLLECTION_REFLECTIONS)
         if collection is not None:
             cursor = collection.find({"user_id": user_id})
-            return await cursor.to_list(length=100)
+            docs = await cursor.to_list(length=100)
+            for d in docs:
+                d.pop('_id', None)
+            return docs
         else:
             mock_store = get_mock_collection(COLLECTION_REFLECTIONS)
-            return [item for item in mock_store if item["user_id"] == user_id]
+            return [dict(item) for item in mock_store if item["user_id"] == user_id]
 
 reflection_repository = ReflectionRepository()

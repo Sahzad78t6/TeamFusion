@@ -210,28 +210,37 @@ VERIFIED_ROLE_SEED_CATALOG: dict[str, list[dict[str, Any]]] = {
 }
 
 
+from app.context_engine import context_engine_service, UserContext
+
 class CuratorEngine:
     async def curate_personalized_resources(
         self,
         user_id: str,
         topic: str = "",
-        target_role: str = ""
+        target_role: str = "",
+        context: Any = None
     ) -> list[dict[str, Any]]:
         """
         Main entry point:
-        1. Synthesize UserLearningContext from Identity Twin / Profile
+        1. Synthesize UserContext from MongoDB via Context Engine
         2. Generate user-tailored targeted search queries
         3. Search YouTube and Web providers concurrently
-        4. Filter and deduplicate candidates
+        4. Filter and deduplicate candidates (excluding completed resources)
         5. Fallback to domain-appropriate catalog if live search yields no items
         6. Apply heuristic ranking based on skill gap and target role
         7. Apply LLM re-ranking & personalized explanation generation
         """
         # 1. Build authentic student context
-        context: UserLearningContext = await curator_context_builder.build(user_id=user_id, topic=topic)
-        if target_role:
+        if context is None:
+            context = await context_engine_service.get_user_context(
+                user_id=user_id,
+                topic=topic,
+                target_role=target_role
+            )
+        elif target_role and hasattr(context, "target_role"):
             context.target_role = target_role
-            context.context_hash = context.compute_hash()
+            if hasattr(context, "compute_hash"):
+                context.context_hash = context.compute_hash()
 
         logger.info(
             f"[CuratorEngine] user={user_id} role='{context.target_role}' "

@@ -28,35 +28,52 @@ class IdentityRepository:
         collection = get_collection(COLLECTION_IDENTITIES)
         if collection is not None:
             await collection.update_one({"user_id": user_id}, {"$set": doc}, upsert=True)
+            doc.pop('_id', None)
         else:
             mock_store = get_mock_collection(COLLECTION_IDENTITIES)
             mock_store[:] = [item for item in mock_store if item.get("user_id") != user_id]
-            mock_store.append(doc)
+            clean_doc = dict(doc)
+            clean_doc.pop('_id', None)
+            mock_store.append(clean_doc)
         return doc
 
     async def get_by_user_id(self, user_id: str) -> dict | None:
         collection = get_collection(COLLECTION_IDENTITIES)
         if collection is not None:
-            return await collection.find_one({"user_id": user_id})
+            doc = await collection.find_one({"user_id": user_id})
+            if doc:
+                doc.pop('_id', None)
+            return doc
         else:
             mock_store = get_mock_collection(COLLECTION_IDENTITIES)
             for item in mock_store:
                 if item.get("user_id") == user_id:
-                    return item
+                    clean = dict(item)
+                    clean.pop('_id', None)
+                    return clean
             return None
+
+    async def get_identity_twin_for_user(self, user_id: str) -> dict | None:
+        """User-scoped getter for identity twin."""
+        return await self.get_by_user_id(user_id)
 
     async def update_identity(self, user_id: str, updates: dict) -> dict | None:
         updates["updated_at"] = get_utc_now()
         collection = get_collection(COLLECTION_IDENTITIES)
         if collection is not None:
             await collection.update_one({"user_id": user_id}, {"$set": updates}, upsert=True)
-            return await collection.find_one({"user_id": user_id})
+            doc = await collection.find_one({"user_id": user_id})
+            if doc:
+                doc.pop('_id', None)
+            return doc
         else:
             mock_store = get_mock_collection(COLLECTION_IDENTITIES)
             for item in mock_store:
                 if item.get("user_id") == user_id:
                     item.update(updates)
-                    return item
+                    clean = dict(item)
+                    clean.pop('_id', None)
+                    return clean
             return None
 
 identity_repository = IdentityRepository()
