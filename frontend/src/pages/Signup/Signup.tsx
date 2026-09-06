@@ -185,7 +185,7 @@ export const Signup: React.FC = () => {
               </div>
               <div className="flex items-start gap-3">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                <span><strong>Supabase Cloud DB</strong> securely manages your encrypted user profile & vector states.</span>
+                <span><strong>MongoDB Atlas Cloud DB</strong> securely manages your user profile, skills, and memory states.</span>
               </div>
               <div className="flex items-start gap-3">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />

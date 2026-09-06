@@ -258,12 +258,12 @@ export const Landing: React.FC = () => {
               <Badge variant="blue">System Architecture</Badge>
               <h2 className="text-3xl font-extrabold text-white">Built on Frontier Agentic Stack</h2>
               <p className="text-sm text-slate-400 leading-relaxed">
-                GrowthOS combines modern React/Vite interfaces with FastAPI backends, LangGraph multi-agent supervisors, Mem0 vector memory pools, and Supabase PostgreSQL schema with Row-Level Security.
+                GrowthOS combines modern React/Vite interfaces with FastAPI backends, LangGraph multi-agent supervisors, Mem0 vector memory pools, and MongoDB Atlas Cloud Database.
               </p>
               <div className="grid grid-cols-2 gap-3 text-xs font-semibold text-slate-300 pt-2">
                 <div className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-400" /> LangGraph Supervisor</div>
                 <div className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-400" /> Mem0 Long-term Memory</div>
-                <div className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-400" /> Supabase RLS Database</div>
+                <div className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-400" /> MongoDB Atlas Cloud DB</div>
                 <div className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-400" /> Scikit-Learn ML Models</div>
               </div>
             </div>
