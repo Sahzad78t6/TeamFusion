@@ -90,15 +90,14 @@ from app.services.auth_service import auth_service
 async def root(code: str | None = None, state: str | None = None, error: str | None = None):
     # Process Google OAuth Callback ONLY when authorization code or OAuth error is present
     if code or error:
-        frontend_base = "http://localhost:5173/login" if (state and state.startswith("dev")) else "https://team-fusion-psi.vercel.app/login"
+        frontend_base = settings.FRONTEND_URL.rstrip("/") + "/login"
         
         if error:
             error_clean = urllib.parse.quote(f"Google OAuth Error: {error}")
             return RedirectResponse(url=f"{frontend_base}?auth_error={error_clean}", status_code=302)
 
         try:
-            # Authorized Redirect URI configured in Google Cloud is https://teamfusion-96bi.onrender.com
-            redirect_uri = "https://teamfusion-96bi.onrender.com"
+            redirect_uri = settings.GOOGLE_OAUTH_REDIRECT_URI
             res = await auth_service.handle_google_code_exchange(code=code, redirect_uri=redirect_uri)
             
             token = res.get("access_token", "")

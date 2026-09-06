@@ -15,6 +15,7 @@ import { Reflection } from '../pages/Reflection/Reflection';
 import { Notifications } from '../pages/Notifications/Notifications';
 import { Profile } from '../pages/Profile/Profile';
 import { Analytics } from '../pages/Analytics/Analytics';
+import { ProtectedRoute } from './ProtectedRoute';
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -26,6 +27,7 @@ export const AppRoutes: React.FC = () => {
       <Route path="/onboarding" element={<Onboarding />} />
 
       {/* Authenticated Dashboard Layout */}
+      <Route element={<ProtectedRoute />}>
       <Route element={<AppLayout />}>
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/identity-twin" element={<IdentityTwin />} />
@@ -36,6 +38,7 @@ export const AppRoutes: React.FC = () => {
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/analytics" element={<Analytics />} />
+      </Route>
       </Route>
 
 

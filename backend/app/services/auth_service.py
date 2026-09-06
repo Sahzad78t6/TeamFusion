@@ -2,7 +2,6 @@ import logging
 import urllib.request
 import urllib.parse
 import json
-import jwt
 from fastapi import HTTPException
 from app.config.settings import settings
 from app.database.repositories.user_repository import user_repository
@@ -192,18 +191,19 @@ class AuthService:
             req = urllib.request.Request(url, headers={"User-Agent": "GrowthOS/1.0"})
             with urllib.request.urlopen(req, timeout=6) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
-                if "email" in data and "sub" in data:
+                if (
+                    data.get("email")
+                    and data.get("sub")
+                    and data.get("email_verified") in (True, "true")
+                    and settings.GOOGLE_CLIENT_ID
+                    and data.get("aud") == settings.GOOGLE_CLIENT_ID
+                ):
                     return data
         except Exception as e:
             logger.warning(f"Google tokeninfo online check failed: {e}. Falling back to JWT decode.")
 
-        # Fallback decode payload safely
-        try:
-            decoded = jwt.decode(id_token, options={"verify_signature": False})
-            if decoded.get("email") and decoded.get("sub"):
-                return decoded
-        except Exception as e:
-            logger.error(f"JWT fallback decode failed: {e}")
+        # Never decode an unverified Google token: a forged payload could issue a
+        # GrowthOS session for an arbitrary email address.
         return None
 
     async def get_current_user(self, user_id: str) -> dict:

@@ -285,7 +285,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           refreshDashboard();
         })
         .catch(() => {
-          // Token expired
+          // Do not retain an expired or malformed session token.
+          setAuthToken(null);
         });
     }
   }, [authToken]);

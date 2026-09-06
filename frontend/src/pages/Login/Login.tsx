@@ -7,8 +7,8 @@ import { loginApi, getMeApi } from '../../services/api';
 import { useApp } from '../../context/AppContext';
 
 export const Login: React.FC = () => {
-  const [email, setEmail] = useState('alex.rivera@growthos.ai');
-  const [password, setPassword] = useState('••••••••••••');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -40,11 +40,7 @@ export const Login: React.FC = () => {
 
   const handleGoogleLogin = () => {
     const googleClientId = (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID || '';
-    const isDev = window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1');
-    
-    // The Authorized Redirect URI configured in Google Cloud is EXACTLY: https://teamfusion-96bi.onrender.com
-    const redirectUri = 'https://teamfusion-96bi.onrender.com';
-    const state = isDev ? 'dev' : 'prod';
+    const redirectUri = (import.meta as any).env?.VITE_GOOGLE_REDIRECT_URI || 'https://teamfusion-96bi.onrender.com';
 
     if (!googleClientId) {
       setErrorMessage(
@@ -59,7 +55,7 @@ export const Login: React.FC = () => {
       redirectUri
     )}&response_type=code&scope=${encodeURIComponent(
       'openid email profile'
-    )}&state=${encodeURIComponent(state)}&prompt=select_account`;
+    )}&prompt=select_account`;
 
     window.location.href = authUrl;
   };

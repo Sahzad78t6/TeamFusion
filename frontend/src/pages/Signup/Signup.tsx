@@ -18,9 +18,7 @@ export const Signup: React.FC = () => {
 
   const handleGoogleLogin = () => {
     const googleClientId = (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID || '';
-    const isDev = window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1');
-    const redirectUri = 'https://teamfusion-96bi.onrender.com';
-    const state = isDev ? 'dev' : 'prod';
+    const redirectUri = (import.meta as any).env?.VITE_GOOGLE_REDIRECT_URI || 'https://teamfusion-96bi.onrender.com';
 
     if (!googleClientId) {
       setErrorMessage(
@@ -35,7 +33,7 @@ export const Signup: React.FC = () => {
       redirectUri
     )}&response_type=code&scope=${encodeURIComponent(
       'openid email profile'
-    )}&state=${encodeURIComponent(state)}&prompt=select_account`;
+    )}&prompt=select_account`;
 
     window.location.href = authUrl;
   };

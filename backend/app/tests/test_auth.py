@@ -1,4 +1,5 @@
 from app.utils.jwt import create_access_token, decode_token
+from app.utils.jwt import create_refresh_token
 from app.utils.security import hash_password, verify_password
 
 def test_password_hashing():
@@ -13,3 +14,6 @@ def test_jwt_encoding_decoding():
     decoded = decode_token(token)
     assert decoded is not None
     assert decoded["sub"] == "user_test_123"
+
+def test_refresh_token_cannot_authenticate_an_api_request():
+    assert decode_token(create_refresh_token({"sub": "user_test_123"})) is None

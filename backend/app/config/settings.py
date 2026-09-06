@@ -10,11 +10,12 @@ class Settings(BaseSettings):
     PORT: int = 8000
 
     # MongoDB
-    MONGODB_URL: str = "mongodb+srv://GrowthOS:sk%40786@cluster0.lxmcdmd.mongodb.net/?appName=Cluster0"
+    # Credentials are supplied by the environment. Never commit connection strings.
+    MONGODB_URL: str = "mongodb://localhost:27017"
     MONGODB_DB_NAME: str = "growthos"
 
     # Security & JWT
-    SECRET_KEY: str = "growthos_super_secret_jwt_key_2026_change_in_production"
+    SECRET_KEY: str = "development-only-change-me-before-deploying"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440  # 24 hours
 
@@ -30,6 +31,8 @@ class Settings(BaseSettings):
     # Google OAuth
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
+    GOOGLE_OAUTH_REDIRECT_URI: str = "https://teamfusion-96bi.onrender.com"
+    FRONTEND_URL: str = "http://localhost:5173"
 
     # Search Providers (YouTube & Web Search)
     YOUTUBE_API_KEY: str = ""

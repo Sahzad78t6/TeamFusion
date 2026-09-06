@@ -54,3 +54,7 @@ def test_google_auth_api_endpoint_failure():
     assert response.status_code == 400
     data = response.json()
     assert "detail" in data
+
+def test_protected_endpoint_rejects_missing_bearer_token():
+    response = client.get("/api/auth/me")
+    assert response.status_code == 401

@@ -6,8 +6,7 @@ security_bearer = HTTPBearer(auto_error=False)
 
 async def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(security_bearer)) -> str:
     if not credentials:
-        # For seamless dev/testing default to demo user id if unauthenticated
-        return "demo_user_123"
+        raise HTTPException(status_code=401, detail="Authentication is required.")
     token = credentials.credentials
     payload = decode_token(token)
     if not payload or "sub" not in payload:

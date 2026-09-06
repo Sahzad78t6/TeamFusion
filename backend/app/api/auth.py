@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field
 from app.schemas.auth import SignupRequest, LoginRequest, TokenResponse
 from app.schemas.user import UserResponse
 from app.services.auth_service import auth_service
+from app.config.settings import settings
 from app.middleware.auth import get_current_user_id
 from app.utils.response import success_response
 
@@ -28,7 +29,7 @@ async def google_login_api(payload: GoogleLoginPayload):
     if payload.credential:
         return await auth_service.login_with_google_credential(payload.credential)
     elif payload.code:
-        redirect_uri = payload.redirect_uri or "https://teamfusion-96bi.onrender.com"
+        redirect_uri = payload.redirect_uri or settings.GOOGLE_OAUTH_REDIRECT_URI
         return await auth_service.handle_google_code_exchange(payload.code, redirect_uri)
     else:
         from fastapi import HTTPException
