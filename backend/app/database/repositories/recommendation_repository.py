@@ -1,6 +1,11 @@
+import logging
+import pymongo.errors
 from app.config.constants import COLLECTION_RECOMMENDATIONS
 from app.database.collections import get_collection, get_mock_collection
 from app.utils.helpers import get_utc_now
+
+logger = logging.getLogger(__name__)
+
 
 class RecommendationRepository:
     async def save_recommendations(
@@ -26,7 +31,27 @@ class RecommendationRepository:
         }
         collection = get_collection(COLLECTION_RECOMMENDATIONS)
         if collection is not None:
-            await collection.update_one({"user_id": user_id}, {"$set": doc}, upsert=True)
+            try:
+                # Primary path: upsert creates the document if it doesn't exist yet.
+                # Race condition: two concurrent requests for a brand-new user_id can
+                # both see no document and both attempt an insert, causing E11000.
+                await collection.update_one(
+                    {"user_id": user_id},
+                    {"$set": doc},
+                    upsert=True
+                )
+            except pymongo.errors.DuplicateKeyError:
+                # The race fired: another concurrent request already inserted the document
+                # between our find and our insert. Fall back to a plain update (no upsert)
+                # which is safe because the document now exists.
+                logger.warning(
+                    f"DuplicateKeyError on upsert for user_id={user_id} "
+                    f"(concurrent insert race). Retrying as plain update."
+                )
+                await collection.update_one(
+                    {"user_id": user_id},
+                    {"$set": doc}
+                )
             doc.pop('_id', None)
         else:
             mock_store = get_mock_collection(COLLECTION_RECOMMENDATIONS)
@@ -51,5 +76,6 @@ class RecommendationRepository:
                     clean_item.pop('_id', None)
                     return clean_item
             return None
+
 
 recommendation_repository = RecommendationRepository()
