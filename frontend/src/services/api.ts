@@ -117,9 +117,15 @@ async function safeParseResponse<T = any>(response: Response, defaultErrorMessag
     try {
       const data = JSON.parse(trimmed);
       if (!response.ok) {
-        const errorDetail = data?.detail || data?.message || `${defaultStatusMessage} (HTTP ${response.status})`;
-        const msg = typeof errorDetail === 'string' ? errorDetail : JSON.stringify(errorDetail);
-        throw new ApiError(msg, code, response.status);
+        let msg = '';
+        if (data?.error) {
+          msg = data.detail ? `${data.error}: ${data.detail}` : data.error;
+        } else if (data?.detail) {
+          msg = typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail);
+        } else {
+          msg = `${defaultStatusMessage} (HTTP ${response.status})`;
+        }
+        throw new ApiError(msg, data?.error || code, response.status);
       }
       return data as T;
     } catch (parseErr: any) {
@@ -299,6 +305,31 @@ export async function refreshRecommendationsApi(token: string, topic?: string): 
   });
 
   return await safeParseResponse(response, 'Failed to trigger Learning Curator Agent.');
+}
+
+// Agent Observability APIs
+export async function getLatestAgentRunApi(token: string, agentName = 'learning_curator'): Promise<any> {
+  const response = await safeFetch(`${API_BASE_URL}/agents/runs/latest/${agentName}`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  return await safeParseResponse(response, 'Failed to fetch agent execution status.');
+}
+
+export async function getAgentRunByIdApi(token: string, runId: string): Promise<any> {
+  const response = await safeFetch(`${API_BASE_URL}/agents/runs/${runId}`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  return await safeParseResponse(response, 'Failed to fetch agent execution run.');
 }
 
 // Opportunities API

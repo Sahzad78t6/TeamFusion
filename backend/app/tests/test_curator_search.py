@@ -52,13 +52,13 @@ async def test_curator_engine_deduplication_and_ranking():
 
 
 @pytest.mark.asyncio
-async def test_curator_fallback_on_empty_search():
+async def test_curator_raises_on_empty_search_without_fallback():
+    from app.exceptions import YouTubeUnavailableError
     with patch("app.services.search_providers.youtube_provider.youtube_provider.search", new_callable=AsyncMock) as mock_yt:
         with patch("app.services.search_providers.web_provider.web_provider.search", new_callable=AsyncMock) as mock_web:
             mock_yt.return_value = []
             mock_web.return_value = []
 
-            resources = await curator_engine.curate_personalized_resources("user_fallback_test", topic="Feature Engineering")
-            assert len(resources) > 0
-            assert "url" in resources[0]
-            assert "youtube.com" in resources[0]["url"] or "scikit-learn" in resources[0]["url"]
+            with pytest.raises(YouTubeUnavailableError) as exc_info:
+                await curator_engine.curate_personalized_resources("user_fallback_test", topic="Feature Engineering")
+            assert "NO_RESOURCES_FOUND" in str(exc_info.value)

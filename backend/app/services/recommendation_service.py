@@ -55,13 +55,27 @@ class RecommendationService:
                 return clean_existing
             else:
                 logger.info(
-                    f"[GET_RECOMMENDATIONS] Stale recommendation detected for {user_id}: "
-                    f"stored_hash={stored_hash} vs current_hash={current_context.context_hash}, "
-                    f"is_within_ttl={is_within_ttl}. Regenerating."
+                    f"[GET_RECOMMENDATIONS] Existing recommendation in DB for {user_id} "
+                    f"(stored_hash={stored_hash} vs current_hash={current_context.context_hash}). Returning stored bundle."
                 )
+                if "resources" not in clean_existing:
+                    clean_existing["resources"] = clean_existing["recommendations"]
+                if "primary_gap" not in clean_existing:
+                    clean_existing["primary_gap"] = current_context.primary_gap
+                clean_existing["user_id"] = user_id
+                return clean_existing
 
-        logger.info(f"[GET_RECOMMENDATIONS] Generating new personalized recommendations for user_id: {user_id}")
-        return await self.refresh_recommendations(user_id)
+        logger.info(f"[GET_RECOMMENDATIONS] No existing recommendations found in DB for user_id: {user_id}. Returning empty state.")
+        return {
+            "user_id": user_id,
+            "recommendations": [],
+            "resources": [],
+            "target_role": current_context.target_role,
+            "primary_gap": current_context.primary_gap,
+            "learning_style": current_context.learning_style,
+            "generated_at": None,
+            "ai_feedback": "No personalized recommendations yet."
+        }
 
     async def refresh_recommendations(self, user_id: str, topic: str = "") -> dict:
         """

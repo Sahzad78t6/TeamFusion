@@ -73,6 +73,9 @@ class UserContext(BaseModel):
     assessment_submissions: list[dict[str, Any]] = Field(default_factory=list)
     completed_resources: list[str] = Field(default_factory=list)
     context_hash: str = ""
+    last_queries: list[str] = Field(default_factory=list)
+    results_retrieved: int = 0
+    results_selected: int = 0
 
     def compute_hash(self) -> str:
         """Deterministic fingerprint of role, gaps, style, and skills for cache invalidation."""

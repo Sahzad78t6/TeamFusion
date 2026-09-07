@@ -29,3 +29,23 @@ class DatabaseError(GrowthOSError):
 class MemoryError(GrowthOSError):
     """Raised when Mem0 memory operations fail."""
     pass
+
+
+class YouTubeError(GrowthOSError):
+    """Base exception for YouTube Data API errors."""
+    pass
+
+
+class YouTubeApiKeyMissingError(YouTubeError):
+    """Raised when YouTube API key is missing or unconfigured."""
+    pass
+
+
+class YouTubeQuotaExceededError(YouTubeError):
+    """Raised when YouTube Data API returns 429 / RESOURCE_EXHAUSTED."""
+    pass
+
+
+class YouTubeUnavailableError(YouTubeError):
+    """Raised when YouTube Data API cannot be reached or returns an unexpected error."""
+    pass

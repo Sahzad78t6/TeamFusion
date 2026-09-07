@@ -26,12 +26,21 @@ class LearningCuratorAgent:
 
         # 1. Synthesize student context strictly from authentic MongoDB collections
         context: UserContext = await context_engine_service.get_user_context(user_id=user_id, topic=topic)
-
+        input_context_summary = {
+            "target_role": context.target_role,
+            "primary_gap": context.primary_gap,
+            "secondary_gap": context.secondary_gap,
+            "learning_style": context.learning_style,
+            "skills": context.skills,
+            "context_hash": context.context_hash
+        }
         # 2. Record agent run telemetry
         run_record = await agent_run_repository.start_run(
             user_id=user_id,
             agent_name="learning_curator",
+            input_context_summary=input_context_summary,
             skills_considered=[context.primary_gap, context.secondary_gap],
+            execution_mode="REAL",
             metadata={
                 "target_role": context.target_role,
                 "learning_style": context.learning_style,
@@ -52,12 +61,17 @@ class LearningCuratorAgent:
                 user_id=user_id,
                 topic=context.primary_gap,
                 target_role=context.target_role,
-                context=context
+                context=context,
+                agent_run_id=curation_run_id
             )
+
+            queries = getattr(context, "last_queries", [f"{context.primary_gap} tutorial"])
+            retrieved_count = getattr(context, "results_retrieved", len(resources))
 
             bundle_doc = {
                 "user_id": user_id,
                 "curation_run_id": curation_run_id,
+                "agent_run_id": curation_run_id,
                 "target_role": context.target_role,
                 "primary_gap": context.primary_gap,
                 "learning_style": context.learning_style,
@@ -66,7 +80,7 @@ class LearningCuratorAgent:
                 "recommendations": resources,
                 "generated_at": get_utc_now(),
                 "ai_feedback": (
-                    f"Curated {len(resources)} personalized resources for your {context.target_role} path "
+                    f"Curated {len(resources)} real personalized resources for your {context.target_role} path "
                     f"focusing on your '{context.primary_gap}' skill gap."
                 )
             }
@@ -83,11 +97,18 @@ class LearningCuratorAgent:
                 ai_feedback=bundle_doc["ai_feedback"]
             )
 
-            # 5. Complete agent run telemetry
+            # 5. Complete agent run telemetry (mode: REAL)
             await agent_run_repository.complete_run(
                 run_id=curation_run_id,
                 status="completed",
-                resources_generated=len(resources),
+                execution_mode="REAL",
+                tools_called=["youtube_search", "llm_rerank"],
+                queries=queries,
+                provider="youtube",
+                results_retrieved=retrieved_count,
+                results_selected=len(resources),
+                decision_summary=f"Selected {len(resources)} resources out of {retrieved_count} candidate results for role '{context.target_role}'",
+                database_writes=["recommendations", "agent_runs"],
                 metadata_updates={"curation_run_id": curation_run_id}
             )
 
@@ -107,50 +128,19 @@ class LearningCuratorAgent:
 
         except Exception as e:
             logger.error(f"[CURATOR_ERROR] user_id={user_id}: {e}", exc_info=True)
-            fallback_resources = curator_engine._format_domain_seed_resources(context)
-
-            fallback_doc = {
-                "user_id": user_id,
-                "curation_run_id": curation_run_id,
-                "target_role": context.target_role,
-                "primary_gap": context.primary_gap,
-                "learning_style": context.learning_style,
-                "context_hash": context.context_hash,
-                "resources": fallback_resources,
-                "recommendations": fallback_resources,
-                "generated_at": get_utc_now(),
-                "ai_feedback": (
-                    f"Curated foundational resources for your '{context.target_role}' goal "
-                    f"targeting your '{context.primary_gap}' gap."
-                )
-            }
-
-            try:
-                await recommendation_repository.save_recommendations(
-                    user_id=user_id,
-                    recommendations=fallback_resources,
-                    target_role=context.target_role,
-                    primary_gap=context.primary_gap,
-                    context_hash=context.context_hash,
-                    curation_run_id=curation_run_id,
-                    ai_feedback=fallback_doc["ai_feedback"]
-                )
-                await agent_run_repository.complete_run(
-                    run_id=curation_run_id,
-                    status="fallback",
-                    resources_generated=len(fallback_resources),
-                    metadata_updates={"error": str(e)}
-                )
-            except Exception as save_err:
-                logger.warning(f"Failed to persist fallback recommendations: {save_err}")
-
-            return AgentResponse(
-                success=True,
-                agent="learning_curator",
-                timestamp=get_utc_now(),
-                data=fallback_doc,
-                database_updates=["recommendations", "agent_runs"],
+            # Log failure in AgentRun
+            queries = getattr(context, "last_queries", [])
+            await agent_run_repository.fail_run(
+                run_id=curation_run_id,
+                error=str(e),
+                execution_mode="FAILED",
+                tools_called=["youtube_search"],
+                queries=queries,
+                provider="youtube",
+                metadata_updates={"error_class": e.__class__.__name__}
             )
+            # ZERO SILENT FALLBACK: Re-raise exception so failures are visible to user and API!
+            raise
 
 
     async def curate_resources(self, user_id: str, topic: str = "") -> dict:

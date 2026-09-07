@@ -9,6 +9,11 @@ import json
 import asyncio
 from typing import Any
 from app.config.settings import settings
+from app.exceptions import (
+    YouTubeApiKeyMissingError,
+    YouTubeQuotaExceededError,
+    YouTubeUnavailableError,
+)
 from app.services.search_providers.base import SearchProvider, SearchResult
 
 logger = logging.getLogger(__name__)
@@ -20,8 +25,7 @@ class YouTubeSearchProvider(SearchProvider):
 
     async def search(self, query: str, max_results: int = 15, filters: dict | None = None) -> list[SearchResult]:
         if not self.api_key or self.api_key.startswith("your_"):
-            logger.info("YouTube API key not configured. YouTube provider returning empty candidates.")
-            return []
+            raise YouTubeApiKeyMissingError("YOUTUBE_API_KEY_MISSING: No valid YouTube Data API key configured.")
 
         def _fetch_youtube_sync() -> list[SearchResult]:
             try:
@@ -79,17 +83,31 @@ class YouTubeSearchProvider(SearchProvider):
 
                 return results
             except urllib.error.HTTPError as e:
-                logger.warning(f"YouTube Data API HTTP error {e.code}: {e.reason}")
-                return []
+                err_body = ""
+                try:
+                    err_body = e.read().decode("utf-8")
+                except Exception:
+                    pass
+                logger.warning(f"YouTube Data API HTTP error {e.code}: {e.reason} | {err_body}")
+                if e.code in (429, 403) and any(kw in err_body.lower() for kw in ("quota", "ratelimit", "resource_exhausted")):
+                    raise YouTubeQuotaExceededError(
+                        "YOUTUBE_QUOTA_EXCEEDED: YouTube Data API daily search quota exceeded. Service is temporarily rate-limited."
+                    )
+                elif e.code == 403:
+                    raise YouTubeUnavailableError(
+                        f"YOUTUBE_API_FORBIDDEN: YouTube API key lacks permission or access is restricted (HTTP 403)."
+                    )
+                else:
+                    raise YouTubeUnavailableError(
+                        f"YOUTUBE_API_ERROR: YouTube search returned HTTP {e.code} ({e.reason})."
+                    )
+            except (YouTubeQuotaExceededError, YouTubeApiKeyMissingError, YouTubeUnavailableError):
+                raise
             except Exception as e:
                 logger.error(f"YouTube Data API search failed for query '{query}': {e}")
-                return []
+                raise YouTubeUnavailableError(f"YOUTUBE_CONNECTION_ERROR: Failed to connect to YouTube Data API ({e}).")
 
-        try:
-            return await asyncio.to_thread(_fetch_youtube_sync)
-        except Exception as e:
-            logger.error(f"YouTube provider async execution error: {e}")
-            return []
+        return await asyncio.to_thread(_fetch_youtube_sync)
 
 
 youtube_provider = YouTubeSearchProvider()
