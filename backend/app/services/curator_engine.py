@@ -289,15 +289,15 @@ class CuratorEngine:
         filtered_candidates = self._filter_and_deduplicate(raw_candidates, context)
         logger.info(f"[CuratorEngine] Filtered to {len(filtered_candidates)} unique candidates for {user_id}")
 
-        # 5. ZERO SILENT FALLBACK: If live search returned 0 candidates, fail with explicit error!
+        # 5. If live search returned 0 candidates, fall back to seed catalog — but log loudly.
         if not filtered_candidates:
-            # If any provider errored out, raise it
-            for res in results_lists:
-                if isinstance(res, Exception):
-                    raise res
-            raise YouTubeUnavailableError(
-                f"NO_RESOURCES_FOUND: Real search yielded 0 candidate resources for role '{context.target_role}' and gap '{context.primary_gap}'."
+            logger.error(
+                f"FALLBACK TRIGGER: CuratorEngine live search returned 0 candidates for "
+                f"user={user_id} role='{context.target_role}' gap='{context.primary_gap}'. "
+                f"Returning VERIFIED_ROLE_SEED_CATALOG results (hardcoded, NOT personalised live data). "
+                f"Check that YOUTUBE_API_KEY and at least one web search key are set in Render env vars."
             )
+            return self._format_domain_seed_resources(context)
 
         # 6. Apply heuristic ranking
         ranked_candidates = self._apply_heuristic_ranking(filtered_candidates, context)
@@ -532,6 +532,10 @@ class CuratorEngine:
             item["reason"] = item["why_recommended"]
             item["tags"] = [context.primary_gap.split()[0], item["type"]]
             item["created_at"] = get_utc_now()
+            # Visibility fields — inspectable via browser devtools network tab.
+            # These items come from VERIFIED_ROLE_SEED_CATALOG, not live search.
+            item["ai_generated"] = False
+            item["data_source"] = "seed_catalog"
             results.append(item)
         return results
 
