@@ -23,7 +23,12 @@ class LLMProvider:
         try:
             return self._client.generate(prompt=prompt, system_instruction=system_instruction)
         except Exception as e:
-            logger.warning(f"LLMProvider generation failed: {e}. Falling back.")
+            # ERROR (not warning) — this means an agent response is about to fall back
+            # to a deterministic/hardcoded result. Visible in Render log stream as red.
+            logger.error(
+                f"FALLBACK TRIGGER: LLMProvider.generate() failed — agent will use deterministic fallback. "
+                f"Reason: {e}"
+            )
             return None
 
     def generate_json(self, prompt: str, system_instruction: str = "") -> dict | list | None:
@@ -31,7 +36,12 @@ class LLMProvider:
         try:
             return self._client.generate_json(prompt=prompt, system_instruction=system_instruction)
         except Exception as e:
-            logger.warning(f"LLMProvider JSON generation failed: {e}. Falling back.")
+            # ERROR (not warning) — this means an agent response is about to fall back
+            # to a deterministic/hardcoded result. Visible in Render log stream as red.
+            logger.error(
+                f"FALLBACK TRIGGER: LLMProvider.generate_json() failed — agent will use deterministic fallback. "
+                f"Reason: {e}"
+            )
             return None
 
     def is_available(self) -> bool:

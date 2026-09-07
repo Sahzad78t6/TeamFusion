@@ -1,7 +1,10 @@
 """Tools for the Planner Agent."""
 import uuid
 import os
+import logging
 from app.llm.provider import llm_provider
+
+logger = logging.getLogger(__name__)
 
 PROMPT_PATH = os.path.join(os.path.dirname(__file__), "prompt.md")
 SYSTEM = open(PROMPT_PATH).read() if os.path.exists(PROMPT_PATH) else ""
@@ -22,16 +25,25 @@ async def generate_ai_roadmap(goals: list[str], target_role: str, skills: list[s
         f"with goals {goals}, targeting the role '{target_role}', with current "
         f"skills {skills}. 4-6 tasks, balanced and prioritized."
     )
-    
+
     result = llm_provider.generate_json(prompt, system_instruction=SYSTEM)
-    
+
     if result and result.get("tasks"):
         for t in result["tasks"]:
             t["id"] = str(uuid.uuid4())[:8]
             t.setdefault("done", False)
+        # Mark as AI-generated so callers can surface this in responses
+        result["ai_generated"] = True
+        result["generation_source"] = "llm"
         return result
 
-    # Deterministic fallback using the already-normalized target_role.
+    # FALLBACK TRIGGER — LLM unavailable or returned no tasks.
+    # This produces a hardcoded template roadmap, NOT a personalized AI plan.
+    logger.error(
+        f"FALLBACK TRIGGER: Planner agent falling back to FALLBACK_TEMPLATE_TASKS for role='{target_role}'. "
+        f"LLM is unavailable or returned no tasks. Set OPENAI_API_KEY to enable real AI roadmap generation."
+    )
+
     tasks = [
         {
             "id": str(uuid.uuid4())[:8],
@@ -45,4 +57,7 @@ async def generate_ai_roadmap(goals: list[str], target_role: str, skills: list[s
     return {
         "tasks": tasks,
         "ai_feedback": f"Roadmap generated for {target_role}. Focus on the high-priority tasks first.",
+        # Visibility fields — inspectable via browser devtools / API response
+        "ai_generated": False,
+        "generation_source": "deterministic_fallback",
     }

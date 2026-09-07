@@ -38,7 +38,10 @@ class OpenAIClient:
         logger.info(f"OpenAI generate: prompt='{prompt[:80]}...'")
 
         if not self._is_configured():
-            logger.warning("OpenAI API key is not configured.")
+            logger.error(
+                "FALLBACK TRIGGER: OpenAI API key is not configured or is still the placeholder value. "
+                "Set OPENAI_API_KEY in Render environment variables. All LLM calls will fail."
+            )
             raise LLMUnavailableError("OpenAI API key is not configured. Set OPENAI_API_KEY in .env")
 
         client = self.client
