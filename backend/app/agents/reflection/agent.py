@@ -25,15 +25,17 @@ class ReflectionAgent:
         database_updates = []
 
         try:
-            # Generate AI insight using LLM
-            insight = await generate_reflection_insights(input_data)
-            
+            # Generate AI insight using LLM.
+            # Returns (insight_text, ai_generated: bool) — False means LLM was unavailable
+            # and a hardcoded mood-string was used instead. Check logs for FALLBACK TRIGGER.
+            insight, insight_ai_generated = await generate_reflection_insights(input_data)
+
             # Update ML metrics (burnout, growth)
             analytics = await analytics_repository.get_analytics_for_user(user_id)
             tasks_completed = analytics.get("tasks_completed_count", 0) + len(input_data.get("completed_tasks", []))
             total_hours = analytics.get("total_study_hours", 0.0) + input_data.get("study_hours", 0.0)
             streak = analytics.get("streak_days", 0) + 1
-            
+
             ml_results = ml_inference.run_full_analytics_inference(
                 tasks_completed=tasks_completed,
                 total_hours=total_hours,
@@ -41,13 +43,16 @@ class ReflectionAgent:
                 mood_score=input_data.get("mood_score", 4),
                 energy_level=input_data.get("energy_level", 4)
             )
-            
+
             # Save reflection doc
             doc = {
                 **input_data,
                 "ai_insight": insight,
                 "risk_level": ml_results["burnout_risk_level"],
                 "burnout_risk_score": ml_results["burnout_risk_score"],
+                # Visibility: allows frontend/devtools to verify AI vs fallback
+                "ai_generated": insight_ai_generated,
+                "insight_source": "llm" if insight_ai_generated else "deterministic_fallback",
             }
             reflection = await reflection_repository.create_reflection(user_id, doc)
             database_updates.append("reflections")

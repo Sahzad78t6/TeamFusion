@@ -11,6 +11,11 @@ from app.services.search_providers.youtube_provider import youtube_provider
 from app.services.search_providers.web_provider import web_provider
 from app.services.search_providers.base import SearchResult
 from app.services.curator_context import UserLearningContext, curator_context_builder
+from app.exceptions import (
+    YouTubeQuotaExceededError,
+    YouTubeApiKeyMissingError,
+    YouTubeUnavailableError,
+)
 from app.llm.provider import llm_provider
 from app.utils.helpers import get_utc_now, generate_uuid
 
@@ -218,17 +223,19 @@ class CuratorEngine:
         user_id: str,
         topic: str = "",
         target_role: str = "",
-        context: Any = None
+        context: Any = None,
+        agent_run_id: str = ""
     ) -> list[dict[str, Any]]:
         """
-        Main entry point:
-        1. Synthesize UserContext from MongoDB via Context Engine
-        2. Generate user-tailored targeted search queries
-        3. Search YouTube and Web providers concurrently
-        4. Filter and deduplicate candidates (excluding completed resources)
-        5. Fallback to domain-appropriate catalog if live search yields no items
-        6. Apply heuristic ranking based on skill gap and target role
-        7. Apply LLM re-ranking & personalized explanation generation
+        Main entry point for REAL Learning Curator:
+        1. Synthesize UserContext from authentic MongoDB collections via Context Engine.
+        2. Generate user-tailored targeted search queries.
+        3. Search real YouTube Data API v3 and Web providers concurrently.
+        4. Detect and propagate any provider errors (quota, key missing) WITHOUT SILENT FALLBACKS.
+        5. Filter and deduplicate candidates (excluding completed resources).
+        6. Apply heuristic ranking based on skill gap and target role.
+        7. Apply LLM re-ranking & personalized explanation generation.
+        8. Inject authentic MongoDB user ownership fields.
         """
         # 1. Build authentic student context
         if context is None:
@@ -259,10 +266,22 @@ class CuratorEngine:
             candidate_tasks.append(web_provider.search(q, max_results=6))
 
         results_lists = await asyncio.gather(*candidate_tasks, return_exceptions=True)
+
+        # Explicit failure detection: Never silently swallow API or quota errors!
+        provider_errors = [
+            res for res in results_lists
+            if isinstance(res, (YouTubeQuotaExceededError, YouTubeApiKeyMissingError, YouTubeUnavailableError))
+        ]
+        if provider_errors:
+            logger.error(f"[CuratorEngine] Real provider failed: {provider_errors[0]}")
+            raise provider_errors[0]
+
         raw_candidates: list[SearchResult] = []
         for res in results_lists:
             if isinstance(res, list):
                 raw_candidates.extend(res)
+            elif isinstance(res, Exception):
+                logger.warning(f"[CuratorEngine] Non-fatal provider exception: {res}")
 
         logger.info(f"[CuratorEngine] Collected {len(raw_candidates)} raw candidate resources for {user_id}")
 
@@ -270,10 +289,15 @@ class CuratorEngine:
         filtered_candidates = self._filter_and_deduplicate(raw_candidates, context)
         logger.info(f"[CuratorEngine] Filtered to {len(filtered_candidates)} unique candidates for {user_id}")
 
-        # 5. Fallback if search results are empty
+        # 5. ZERO SILENT FALLBACK: If live search returned 0 candidates, fail with explicit error!
         if not filtered_candidates:
-            logger.info(f"[CuratorEngine] Live search returned 0 candidates. Using domain catalog for '{context.target_role}'.")
-            return self._format_domain_seed_resources(context)
+            # If any provider errored out, raise it
+            for res in results_lists:
+                if isinstance(res, Exception):
+                    raise res
+            raise YouTubeUnavailableError(
+                f"NO_RESOURCES_FOUND: Real search yielded 0 candidate resources for role '{context.target_role}' and gap '{context.primary_gap}'."
+            )
 
         # 6. Apply heuristic ranking
         ranked_candidates = self._apply_heuristic_ranking(filtered_candidates, context)
@@ -282,7 +306,20 @@ class CuratorEngine:
         top_candidates = ranked_candidates[:8]
 
         # 7. LLM Re-Ranking & Personalization Reason Generation
-        final_resources = await self._apply_llm_reranking(top_candidates, context)
+        final_resources = await self._apply_llm_reranking(
+            top_candidates,
+            context,
+            user_id=user_id,
+            agent_run_id=agent_run_id,
+            query=queries[0] if queries else ""
+        )
+
+        # Stash telemetry onto context for AgentRun tracking
+        if hasattr(context, "__dict__"):
+            context.last_queries = queries
+            context.results_retrieved = len(raw_candidates)
+            context.results_selected = len(final_resources)
+
         return final_resources
 
     def _generate_search_queries(self, context: UserLearningContext) -> list[str]:
@@ -359,7 +396,10 @@ class CuratorEngine:
     async def _apply_llm_reranking(
         self,
         candidates: list[SearchResult],
-        context: UserLearningContext
+        context: UserLearningContext,
+        user_id: str = "",
+        agent_run_id: str = "",
+        query: str = ""
     ) -> list[dict[str, Any]]:
         candidate_json = [
             {
@@ -378,15 +418,23 @@ class CuratorEngine:
             f"Return JSON matching key 'evaluations', where each item has 'url', 'match_score' (0.0 to 1.0), and 'reason' (why it helps)."
         )
 
+        llm_rerank_succeeded = False
         try:
             eval_res = llm_provider.generate_json(prompt)
             eval_map = {}
             if eval_res and "evaluations" in eval_res:
                 for ev in eval_res["evaluations"]:
                     eval_map[ev.get("url")] = ev
+                llm_rerank_succeeded = bool(eval_map)
         except Exception as e:
-            logger.warning(f"LLM re-ranking failed: {e}. Using heuristic scores.")
+            logger.error(
+                f"FALLBACK TRIGGER: Curator LLM re-ranking failed — resources will use heuristic scores "
+                f"instead of personalized AI evaluation. Reason: {e}"
+            )
             eval_map = {}
+
+        skill_identifier = (getattr(context, "primary_gap", "") or "general").lower().replace(" ", "_")
+        active_query = query or f"{context.primary_gap} tutorial"
 
         formatted = []
         for i, c in enumerate(candidates):
@@ -400,30 +448,50 @@ class CuratorEngine:
             thumb = c.thumbnail or "https://images.unsplash.com/photo-1516116211223-48a122638e59?auto=format&fit=crop&w=800&q=80"
             prov = c.channel or c.source.capitalize()
 
+            # Per-resource: was THIS resource's score/reason from LLM or heuristic?
+            resource_ai_generated = bool(llm_eval)  # True only if LLM returned an eval for this URL
+
             formatted.append({
-                "id": c.resource_id,
+                # Phase 9: Explicit MongoDB User Ownership Fields
+                "user_id": user_id,
+                "agent_run_id": agent_run_id,
+                "skill_id": skill_identifier,
                 "title": c.title,
-                "type": c.type,
+                "description": c.description,
                 "source": c.source,
                 "url": c.url,
-                "link": c.url,
                 "thumbnail": thumb,
+                "query": active_query,
+                "match_score": numeric_score,
+                "reason": reason,
+                "status": "active",
+                "created_at": get_utc_now(),
+
+                # Visibility fields — inspectable via browser devtools network tab.
+                # data_source: always live_search (seed helpers are not called from this flow).
+                # ai_generated: True only if LLM evaluated this specific resource.
+                # llm_rerank_source: overall re-rank outcome for the batch.
+                "data_source": "live_search",
+                "ai_generated": resource_ai_generated,
+                "llm_rerank_source": "llm" if resource_ai_generated else "heuristic_fallback",
+
+                # Frontend & Context Backward Compatibility Fields
+                "id": c.resource_id,
+                "link": c.url,
                 "imageUrl": thumb,
                 "image_url": thumb,
                 "author": prov,
                 "provider": prov,
                 "channel": prov,
+                "type": c.type,
                 "duration": f"{c.duration_minutes or 20} Mins",
                 "difficulty": "Intermediate",
                 "rating": 4.9,
-                "match_score": numeric_score,
                 "matchScore": numeric_score,
                 "progressPercentage": 0,
                 "progress_percentage": 0,
-                "reason": reason,
                 "why_recommended": reason,
                 "tags": [context.primary_gap.split()[0], c.type],
-                "created_at": get_utc_now()
             })
 
         return formatted

@@ -38,12 +38,15 @@ class PlannerAgent:
                 tasks=roadmap_data.get("tasks", []),
                 ai_feedback=roadmap_data.get("ai_feedback", "Roadmap generated successfully."),
             )
-            
+
             # Save plan to database
             plan_doc = {
                 "user_id": user_id,
                 "target_role": target_role,
                 "goals": user_goals,
+                # Visibility: allows frontend/devtools to verify AI vs fallback
+                "ai_generated": roadmap_data.get("ai_generated", False),
+                "generation_source": roadmap_data.get("generation_source", "unknown"),
                 **roadmap.model_dump()
             }
             await planner_repository.save_plan(user_id, plan_doc)
