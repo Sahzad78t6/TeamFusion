@@ -1,6 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Building2, Plus, Users } from 'lucide-react';
-import { createAssessmentApi, createCohortApi, getCohortsApi, getInstitutionAnalyticsApi } from '../../services/api';
+import { Building2, Plus, Users, Code2 } from 'lucide-react';
+import {
+  createAssessmentApi,
+  createCohortApi,
+  getCohortsApi,
+  getInstitutionAnalyticsApi,
+  createContestApi,
+} from '../../services/api';
 import { useApp } from '../../context/AppContext';
 import { Button } from '../../components/common/Button';
 
@@ -22,6 +28,29 @@ export const InstitutionAdmin: React.FC = () => {
     optionA: '',
     optionB: '',
   });
+  const [contestForm, setContestForm] = useState({
+    cohort_id: '',
+    question_count: 2,
+    duration_minutes: 60,
+  });
+
+  const addContest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!authToken) return;
+    try {
+      const now = new Date();
+      const endTime = new Date(now.getTime() + (contestForm.duration_minutes || 60) * 60 * 1000);
+      await createContestApi(authToken, {
+        cohort_id: contestForm.cohort_id,
+        question_count: Number(contestForm.question_count) || 2,
+        start_time: now.toISOString(),
+        end_time: endTime.toISOString(),
+      });
+      setMessage('Coding Contest launched successfully! Cohort students can now enter from the Coding Contest tab.');
+    } catch (e: any) {
+      setMessage(`Contest launch failed: ${e.message}`);
+    }
+  };
 
   const refresh = () => {
     if (authToken) {
@@ -221,6 +250,62 @@ export const InstitutionAdmin: React.FC = () => {
 
           <Button type="submit" variant="glow">
             Publish
+          </Button>
+        </form>
+
+        {/* Launch Coding Contest Card */}
+        <form onSubmit={addContest} className="glass-panel p-6 rounded-2xl border border-white/10 space-y-4">
+          <div className="flex items-center gap-2">
+            <Code2 className="w-5 h-5 text-purple-400" />
+            <h2 className="text-xl font-bold text-white">Schedule Coding Contest</h2>
+          </div>
+          <p className="text-xs text-slate-400">
+            Randomly sample algorithmic questions from the coding question bank and assign to a cohort.
+          </p>
+
+          <select
+            required
+            value={contestForm.cohort_id}
+            onChange={e => setContestForm({ ...contestForm, cohort_id: e.target.value })}
+            className="w-full p-3 rounded-xl bg-[#12141d] text-white border border-white/10"
+          >
+            <option value="">Select target cohort</option>
+            {cohorts.map(c => (
+              <option key={c.id} value={c.id}>
+                {c.name} · {c.branch}
+              </option>
+            ))}
+          </select>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-slate-400 mb-1 block">Question Count</label>
+              <input
+                type="number"
+                min="1"
+                max="5"
+                required
+                value={contestForm.question_count}
+                onChange={e => setContestForm({ ...contestForm, question_count: Number(e.target.value) })}
+                className="w-full p-3 rounded-xl bg-white/5 text-white border border-white/10 text-sm"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-slate-400 mb-1 block">Duration (Minutes)</label>
+              <input
+                type="number"
+                min="5"
+                max="360"
+                required
+                value={contestForm.duration_minutes}
+                onChange={e => setContestForm({ ...contestForm, duration_minutes: Number(e.target.value) })}
+                className="w-full p-3 rounded-xl bg-white/5 text-white border border-white/10 text-sm"
+              />
+            </div>
+          </div>
+
+          <Button type="submit" variant="glow" leftIcon={<Code2 className="w-4 h-4" />}>
+            Launch Live Contest
           </Button>
         </form>
       </div>

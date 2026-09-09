@@ -15,6 +15,7 @@ import {
   ClipboardList,
   Building2,
   HardDrive,
+  Code2,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
@@ -33,8 +34,10 @@ export const Sidebar: React.FC = () => {
     { label: 'Daily Planner', path: '/planner', icon: Calendar },
     { label: 'Reflection', path: '/reflection', icon: PenTool },
     { label: 'Assessments', path: '/assessments', icon: ClipboardList },
+    { label: 'Coding Contest', path: '/contest', icon: Code2, badge: 'Live' },
     ...(user.role === 'INSTITUTION_ADMIN' || user.role === 'PLATFORM_ADMIN' ? [{ label: 'Institution Admin', path: '/institution-admin', icon: Building2 }] : []),
   ];
+
 
 
   return (

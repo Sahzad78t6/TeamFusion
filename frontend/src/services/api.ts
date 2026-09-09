@@ -501,3 +501,61 @@ export async function getFailedFilesApi(token: string): Promise<any> {
   return await safeParseResponse(response, 'Failed to fetch failed document list.');
 }
 
+// Coding Contest APIs
+export interface CodingContestQuestion {
+  id: string;
+  title: string;
+  description: string;
+  difficulty: string;
+  starter_code: string;
+  test_cases?: { input: string }[];
+}
+
+export interface ActiveContestResponse {
+  id: string;
+  cohort_id: string;
+  start_time: string;
+  end_time: string;
+  question_ids: string[];
+  questions: CodingContestQuestion[];
+}
+
+export interface ContestSubmitResponse {
+  passed: boolean | null;
+  results: { test_case_index: number; passed: boolean }[];
+}
+
+export async function getActiveContestApi(token: string): Promise<ActiveContestResponse | null> {
+  const response = await safeFetch(`${API_BASE_URL}/contests/active`, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+  });
+  return await safeParseResponse<ActiveContestResponse | null>(response, 'Failed to retrieve active contest.');
+}
+
+export async function submitContestCodeApi(
+  token: string,
+  contestId: string,
+  payload: { question_id: string; code: string }
+): Promise<ContestSubmitResponse> {
+  const response = await safeFetch(`${API_BASE_URL}/contests/${contestId}/submit`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  return await safeParseResponse<ContestSubmitResponse>(response, 'Failed to submit code.');
+}
+
+export async function createContestApi(
+  token: string,
+  payload: { cohort_id: string; question_count: number; start_time: string; end_time: string }
+): Promise<any> {
+  const response = await safeFetch(`${API_BASE_URL}/institutions/contests`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  return await safeParseResponse(response, 'Failed to create contest session.');
+}
+
+

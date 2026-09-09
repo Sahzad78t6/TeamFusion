@@ -18,6 +18,7 @@ import { Analytics } from '../pages/Analytics/Analytics';
 import { Assessments } from '../pages/Assessments/Assessments';
 import { InstitutionAdmin } from '../pages/InstitutionAdmin/InstitutionAdmin';
 import { KnowledgeBasePage } from '../pages/KnowledgeBase/KnowledgeBase';
+import { Contest } from '../pages/Contest/Contest';
 import { ProtectedRoute } from './ProtectedRoute';
 
 
@@ -43,9 +44,11 @@ export const AppRoutes: React.FC = () => {
         <Route path="/profile" element={<Profile />} />
         <Route path="/analytics" element={<Analytics />} />
         <Route path="/assessments" element={<Assessments />} />
+        <Route path="/contest" element={<Contest />} />
         <Route path="/institution-admin" element={<InstitutionAdmin />} />
         <Route path="/knowledge-base" element={<KnowledgeBasePage />} />
       </Route>
+
 
       </Route>
 
