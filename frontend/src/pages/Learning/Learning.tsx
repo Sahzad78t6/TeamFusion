@@ -1,0 +1,379 @@
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { BookOpen, Bookmark, Heart, Star, Search, ExternalLink, Loader2, Sparkles, Target, Zap, Clock, Compass } from 'lucide-react';
+import { useApp } from '../../context/AppContext';
+import { Badge } from '../../components/common/Badge';
+import { Button } from '../../components/common/Button';
+import { getRecommendationsApi, refreshRecommendationsApi } from '../../services/api';
+
+export const Learning: React.FC = () => {
+  const { learningResources, setLearningResources, toggleBookmarkResource, toggleLikeResource, authToken, identityTwin } = useApp();
+  const [selectedType, setSelectedType] = useState<string>('all');
+  const [search, setSearch] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [statusMsg, setStatusMsg] = useState('');
+
+  // Personalization signals
+  const [targetRole, setTargetRole] = useState<string>('');
+  const [primaryGap, setPrimaryGap] = useState<string>('');
+  const [learningStyle, setLearningStyle] = useState<string>('');
+  const [lastCuratedAt, setLastCuratedAt] = useState<string>('');
+
+  const formatTimeAgo = (isoString?: string) => {
+    if (!isoString) return 'Just now';
+    try {
+      const date = new Date(isoString);
+      const diffMs = Date.now() - date.getTime();
+      const diffMins = Math.floor(diffMs / 60000);
+      if (diffMins < 1) return 'Just now';
+      if (diffMins < 60) return `${diffMins}m ago`;
+      const diffHours = Math.floor(diffMins / 60);
+      if (diffHours < 24) return `${diffHours}h ago`;
+      return `${Math.floor(diffHours / 24)}d ago`;
+    } catch {
+      return 'Recently';
+    }
+  };
+
+  const mapResource = (r: any) => ({
+    id: r.id || `rec-${Math.random()}`,
+    title: r.title,
+    type: (r.type || 'course').toLowerCase(),
+    author: r.author || r.provider || r.channel || 'GrowthOS AI Curator',
+    platform: r.platform || r.provider || r.channel || r.source || 'YouTube',
+    duration: r.duration || '20 Mins',
+    difficulty: r.difficulty || 'Intermediate',
+    category: r.category || 'Architecture',
+    rating: r.rating || 4.9,
+    matchScore: r.matchScore || r.match_score || 92,
+    whyRecommended: r.whyRecommended || r.why_recommended || r.reason || 'Personalized match based on your skill gap.',
+    imageUrl: r.imageUrl || r.thumbnail || r.image_url || 'https://images.unsplash.com/photo-1516116211223-48a122638e59?auto=format&fit=crop&w=800&q=80',
+    link: r.link || r.url || '#',
+    tags: r.tags || ['AI'],
+    isBookmarked: false,
+    isLiked: false,
+    progressPercentage: r.progressPercentage ?? r.progress_percentage ?? 0,
+  });
+
+  // Fetch recommendations from backend API on mount
+  useEffect(() => {
+    if (authToken) {
+      setIsLoading(true);
+      getRecommendationsApi(authToken)
+        .then((data) => {
+          if (data) {
+            if (data.target_role) setTargetRole(data.target_role);
+            if (data.primary_gap) setPrimaryGap(data.primary_gap);
+            if (data.learning_style) setLearningStyle(data.learning_style);
+            if (data.generated_at) setLastCuratedAt(data.generated_at);
+
+            const recs = data.recommendations || data.resources || [];
+            if (recs.length > 0) {
+              setLearningResources(recs.map(mapResource));
+            }
+          }
+        })
+        .catch((err) => {
+          console.warn('Failed to load backend recommendations:', err);
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
+    }
+  }, [authToken, setLearningResources]);
+
+  const handleTriggerCuratorAgent = async () => {
+    if (!authToken || isLoading) return;
+    setIsLoading(true);
+    setStatusMsg('Analyzing your current skill gaps...');
+
+    const step1Timer = setTimeout(() => {
+      setStatusMsg('Searching personalized resources from YouTube & Web...');
+    }, 1000);
+
+    const step2Timer = setTimeout(() => {
+      setStatusMsg('Ranking the best matches for your target role...');
+    }, 2200);
+
+    try {
+      const data = await refreshRecommendationsApi(authToken);
+      clearTimeout(step1Timer);
+      clearTimeout(step2Timer);
+
+      if (data) {
+        if (data.target_role) setTargetRole(data.target_role);
+        if (data.primary_gap) setPrimaryGap(data.primary_gap);
+        if (data.learning_style) setLearningStyle(data.learning_style);
+        if (data.generated_at) setLastCuratedAt(data.generated_at);
+
+        const recs = data.recommendations || data.resources || [];
+        if (recs.length > 0) {
+          setLearningResources(recs.map(mapResource));
+          setStatusMsg(`✓ Agent completed! Curated ${recs.length} personalized resources ready.`);
+          setTimeout(() => setStatusMsg(''), 5000);
+        } else {
+          setStatusMsg('No matching learning resources found for your current skill gap.');
+        }
+      }
+    } catch (err: any) {
+      clearTimeout(step1Timer);
+      clearTimeout(step2Timer);
+      console.error('Learning curator execution error:', err);
+      setStatusMsg(err.message || 'Failed to trigger agent.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const types = [
+    { label: 'All Media', value: 'all' },
+    { label: 'Courses', value: 'course' },
+    { label: 'Books', value: 'book' },
+    { label: 'Papers', value: 'paper' },
+    { label: 'Videos', value: 'video' },
+    { label: 'Articles', value: 'article' },
+    { label: 'Podcasts', value: 'podcast' },
+  ];
+
+  const filtered = learningResources.filter((r) => {
+    const matchesType = selectedType === 'all' || r.type === selectedType;
+    const matchesSearch =
+      r.title.toLowerCase().includes(search.toLowerCase()) ||
+      r.author.toLowerCase().includes(search.toLowerCase()) ||
+      r.platform.toLowerCase().includes(search.toLowerCase());
+    return matchesType && matchesSearch;
+  });
+
+  const activeRole = targetRole || identityTwin.dreamArchetype || 'AI & Systems Engineer';
+  const activeGap = primaryGap || 'System Architecture';
+  const activeStyle = learningStyle || 'Practical & Visual';
+
+  return (
+    <div className="space-y-8 pb-12">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {lastCuratedAt ? (
+              <>
+                <Badge variant="purple">Curator Run: {formatTimeAgo(lastCuratedAt)}</Badge>
+                <Badge variant="cyan">{learningResources.length} Resources Generated</Badge>
+                <Badge variant="blue">Skill Focus: {activeGap}</Badge>
+                <Badge variant="amber">Source: YouTube & Technical Web</Badge>
+              </>
+            ) : (
+              <>
+                <Badge variant="outline">AI Curator Ready</Badge>
+                <Badge variant="cyan">{learningResources.length} Resources</Badge>
+                <Badge variant="amber">Source: YouTube & Technical Web</Badge>
+              </>
+            )}
+          </div>
+          <h1 className="text-3xl font-extrabold text-white mt-2">Learning Curation</h1>
+          <p className="text-xs text-slate-400">
+            Personalized learning paths curated by Learning Curator Agent & stored in MongoDB Atlas.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3 w-full md:w-auto">
+          <Button
+            variant="glow"
+            size="sm"
+            disabled={isLoading}
+            onClick={handleTriggerCuratorAgent}
+            leftIcon={isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+          >
+            {isLoading ? 'AI Curator is searching and personalizing resources...' : 'Run Learning Curator Agent'}
+          </Button>
+
+          {/* Search Input */}
+          <div className="relative w-full md:w-64">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search resources, topics..."
+              className="w-full pl-9 pr-4 py-2 bg-white/5 border border-white/10 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500/50"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Personalized Signals Card */}
+      <div className="glass-panel p-4 rounded-2xl border border-white/10 flex flex-wrap items-center justify-between gap-4 text-xs">
+        <div className="flex items-center gap-6 flex-wrap">
+          <div className="flex items-center gap-2">
+            <Target className="w-4 h-4 text-purple-400" />
+            <span className="text-slate-400">Target Role:</span>
+            <span className="text-white font-semibold">{activeRole}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Compass className="w-4 h-4 text-cyan-400" />
+            <span className="text-slate-400">Priority Gap:</span>
+            <span className="text-white font-semibold">{activeGap}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Zap className="w-4 h-4 text-amber-400" />
+            <span className="text-slate-400">Learning Style:</span>
+            <span className="text-white font-semibold capitalize">{activeStyle}</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 text-slate-400 text-[11px]">
+          <Clock className="w-3.5 h-3.5 text-slate-500" />
+          <span>Last curated: {formatTimeAgo(lastCuratedAt)}</span>
+        </div>
+      </div>
+
+      {/* Status progression banner */}
+      {statusMsg && (
+        <div className="p-3 bg-purple-500/10 border border-purple-500/30 rounded-xl text-xs text-purple-300 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            {isLoading && <Loader2 className="w-3.5 h-3.5 animate-spin text-purple-400" />}
+            <span>{statusMsg}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Category Pills */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+        {types.map((t) => (
+          <button
+            key={t.value}
+            onClick={() => setSelectedType(t.value)}
+            className={`px-4 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all border ${
+              selectedType === t.value
+                ? 'bg-purple-600 text-white border-purple-400 shadow-md shadow-purple-500/20'
+                : 'bg-white/5 border-white/10 text-slate-400 hover:text-white hover:bg-white/10'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Resource Grid / Empty State */}
+      {filtered.length === 0 ? (
+        <div className="flex flex-col items-center justify-center p-12 glass-panel rounded-3xl border border-white/10 text-center space-y-3">
+          <BookOpen className="w-10 h-10 text-slate-500" />
+          <h3 className="text-sm font-bold text-white">No Resources Found</h3>
+          <p className="text-xs text-slate-400 max-w-md">
+            No matching learning resources found for your current skill gap.
+          </p>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleTriggerCuratorAgent}
+            disabled={isLoading}
+            leftIcon={isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 text-purple-400" />}
+          >
+            {isLoading ? 'AI Curator is searching...' : 'Run Learning Curator Agent'}
+          </Button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filtered.map((res) => (
+            <motion.div
+              key={res.id}
+              layout
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="glass-panel rounded-3xl border border-white/10 overflow-hidden flex flex-col justify-between hover:border-purple-500/40 transition-all duration-300 group cursor-pointer"
+              onClick={() => {
+                if (res.link && res.link !== '#') {
+                  window.open(res.link, '_blank');
+                }
+              }}
+            >
+              {/* Image Banner */}
+              <div className="relative h-44 w-full overflow-hidden">
+                <img
+                  src={res.imageUrl}
+                  alt={res.title}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#12141d] via-transparent to-black/30" />
+
+                <span className="absolute top-3 left-3 px-2.5 py-1 text-[10px] font-bold rounded-lg bg-black/70 text-white backdrop-blur-md uppercase tracking-wider border border-white/10">
+                  {res.type}
+                </span>
+
+                {/* Bookmark & Heart Buttons */}
+                <div className="absolute top-3 right-3 flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    onClick={() => toggleLikeResource(res.id)}
+                    className={`p-2 rounded-xl backdrop-blur-md border transition-colors ${
+                      res.isLiked ? 'bg-rose-500/20 border-rose-500/40 text-rose-400' : 'bg-black/40 border-white/10 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <Heart className={`w-3.5 h-3.5 ${res.isLiked ? 'fill-rose-400' : ''}`} />
+                  </button>
+                  <button
+                    onClick={() => toggleBookmarkResource(res.id)}
+                    className={`p-2 rounded-xl backdrop-blur-md border transition-colors ${
+                      res.isBookmarked ? 'bg-purple-500/20 border-purple-500/40 text-purple-300' : 'bg-black/40 border-white/10 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <Bookmark className={`w-3.5 h-3.5 ${res.isBookmarked ? 'fill-purple-300' : ''}`} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Card Body */}
+              <div className="p-5 space-y-3 flex-1 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between text-[11px] text-slate-400 mb-1">
+                    <span className="flex items-center gap-1">
+                      <span className="px-2 py-0.5 text-[9px] font-bold rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase">
+                        {res.matchScore ? `${res.matchScore}% Match` : '92% Match'}
+                      </span>
+                      <span className="text-slate-500">•</span>
+                      <span>{res.platform}</span>
+                    </span>
+                    <span className="flex items-center gap-1 text-amber-400 font-bold">
+                      <Star className="w-3 h-3 fill-amber-400" /> {res.rating}
+                    </span>
+                  </div>
+
+                  <h3 className="text-sm font-bold text-white group-hover:text-purple-300 transition-colors line-clamp-2 flex items-center justify-between gap-1 mt-1">
+                    <span>{res.title}</span>
+                    <ExternalLink className="w-3.5 h-3.5 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-1">{res.author} • {res.duration}</p>
+
+                  {res.whyRecommended && (
+                    <p className="text-[11px] text-purple-300/90 italic bg-purple-500/10 border border-purple-500/20 rounded-lg p-2 mt-2.5 line-clamp-2">
+                      "{res.whyRecommended}"
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-3 pt-2 border-t border-white/10">
+                  {/* Progress bar */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-[10px] font-semibold text-slate-400">
+                      <span>Completion</span>
+                      <span className="text-purple-400">{res.progressPercentage}%</span>
+                    </div>
+                    <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                      <div className="bg-gradient-to-r from-purple-500 to-indigo-500 h-full" style={{ width: `${res.progressPercentage}%` }} />
+                    </div>
+                  </div>
+
+                  {/* Tags */}
+                  <div className="flex flex-wrap gap-1.5">
+                    {res.tags.map((t: string, i: number) => (
+                      <span key={i} className="px-2 py-0.5 text-[9px] font-mono rounded-md bg-white/5 text-slate-400 border border-white/5">
+                        #{t}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};

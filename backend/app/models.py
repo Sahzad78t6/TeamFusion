@@ -1,0 +1,122 @@
+from datetime import datetime
+from typing import Dict, List, Literal, Optional
+from pydantic import BaseModel, EmailStr, Field
+
+UserRole = Literal["STUDENT", "INSTITUTION_ADMIN", "PLATFORM_ADMIN"]
+
+class UserResponse(BaseModel):
+    id: str
+    name: str
+    email: str
+    created_at: str
+    role: UserRole = "STUDENT"
+    institution_id: Optional[str] = None
+    cohort_id: Optional[str] = None
+    onboarding_completed: bool = False
+
+class AuthResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+    user: UserResponse
+
+class SignupRequest(BaseModel):
+    name: str = Field(..., min_length=1)
+    email: EmailStr
+    password: str = Field(..., min_length=1)
+    role: Optional[UserRole] = "STUDENT"
+    institution_id: Optional[str] = None
+    cohort_id: Optional[str] = None
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str = Field(..., min_length=1)
+
+class OnboardingRequest(BaseModel):
+    goal: str
+    target_role: Optional[str] = None
+    current_role: Optional[str] = None
+    skills: List[str] = Field(default_factory=list)
+    interests: List[str] = Field(default_factory=list)
+    experience: Optional[str] = None
+    learning_style: Optional[str] = ""
+    available_time: Optional[str] = ""
+    preferred_content: List[str] = Field(default_factory=list)
+    language: Optional[str] = "English"
+
+class IdentityResponse(BaseModel):
+    goal: Optional[str] = None
+    year: Optional[str] = None
+    college: Optional[str] = None
+    target_role: Optional[str] = None
+
+class TaskUpdateRequest(BaseModel):
+    completed: bool = True
+
+class RefreshRequest(BaseModel):
+    topic: Optional[str] = None
+
+# Phase 3: Cohorts & Assessments Models
+class CohortCreateRequest(BaseModel):
+    name: str = Field(..., min_length=1)
+    year: str = Field(..., min_length=1)
+    branch: str = Field(..., min_length=1)
+    section: Optional[str] = ""
+
+class CohortResponse(BaseModel):
+    id: str
+    institution_id: str
+    name: str
+    year: str
+    branch: str
+    section: Optional[str] = ""
+
+class InstitutionAnalyticsResponse(BaseModel):
+    total_students: int
+    cohort_count: int
+    assessment_submissions: int
+
+class QuestionManual(BaseModel):
+    id: Optional[str] = None
+    prompt: str
+    options: List[str]
+    correct_option: int = 0
+    skill: Optional[str] = None
+
+class AssessmentCreateRequest(BaseModel):
+    title: str = Field(..., min_length=1)
+    description: Optional[str] = ""
+    cohort_id: str = Field(..., min_length=1)
+    skill: str = Field(..., min_length=1)
+    # Mode A (manual)
+    questions: Optional[List[QuestionManual]] = None
+    # Mode B (quiz_bank sampled)
+    year: Optional[str] = None
+    topic_code: Optional[str] = None
+    question_count: Optional[int] = None
+
+class AssessmentSubmissionRequest(BaseModel):
+    answers: Dict[str, int]
+
+class JoinCohortRequest(BaseModel):
+    cohort_id: Optional[str] = None
+    code: Optional[str] = None
+
+# Coding Contest Models
+class ContestCreateRequest(BaseModel):
+    cohort_id: str = Field(..., min_length=1)
+    question_count: int = Field(default=2, ge=1)
+    start_time: str = Field(..., min_length=1)
+    end_time: str = Field(..., min_length=1)
+
+class CodeSubmitRequest(BaseModel):
+    question_id: str = Field(..., min_length=1)
+    code: str
+
+class TestCaseResult(BaseModel):
+    test_case_index: int
+    passed: bool
+
+class CodeSubmitResponse(BaseModel):
+    passed: Optional[bool]
+    results: List[TestCaseResult]

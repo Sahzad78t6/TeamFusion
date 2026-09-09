@@ -1,0 +1,155 @@
+import React, { useState } from 'react';
+import { motion } from 'framer-motion';
+import { Calendar, CheckCircle2, Circle, Clock, Plus, Flame, Sparkles } from 'lucide-react';
+import { useApp } from '../../context/AppContext';
+import { Badge } from '../../components/common/Badge';
+import { Button } from '../../components/common/Button';
+
+export const Planner: React.FC = () => {
+  const { tasks, toggleTask } = useApp();
+  const [activeTab, setActiveTab] = useState<'timeline' | 'kanban'>('timeline');
+
+  const completedCount = tasks.filter((t) => t.isCompleted).length;
+
+  return (
+    <div className="space-y-8 pb-12">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <Badge variant="purple" icon={<Flame className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />}>
+              Daily Focus Engine
+            </Badge>
+            <Badge variant="cyan">{completedCount} of {tasks.length} Completed</Badge>
+          </div>
+          <h1 className="text-3xl font-extrabold text-white mt-2">Daily Planner & Timeline</h1>
+          <p className="text-xs text-slate-400">Broken down from your Identity Twin milestone roadmap.</p>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="flex items-center p-1 bg-white/5 border border-white/10 rounded-xl">
+            <button
+              onClick={() => setActiveTab('timeline')}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+                activeTab === 'timeline' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Timeline
+            </button>
+            <button
+              onClick={() => setActiveTab('kanban')}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+                activeTab === 'kanban' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Priority Board
+            </button>
+          </div>
+
+          <Button variant="glow" size="sm" leftIcon={<Plus className="w-4 h-4" />}>
+            Add Focus Task
+          </Button>
+        </div>
+      </div>
+
+      {/* Timeline View */}
+      {activeTab === 'timeline' && (
+        <div className="glass-panel p-6 md:p-8 rounded-3xl border border-white/10 space-y-6">
+          <h3 className="text-base font-bold text-white flex items-center gap-2">
+            <Clock className="w-4 h-4 text-purple-400" />
+            Today's Scheduled Micro-Blocks
+          </h3>
+
+          <div className="relative pl-6 border-l-2 border-purple-500/30 space-y-6">
+            {tasks.map((task) => (
+              <motion.div
+                key={task.id}
+                layout
+                className="relative group"
+              >
+                {/* Timeline Dot */}
+                <div
+                  className={`absolute -left-[31px] top-1.5 w-4 h-4 rounded-full border-2 transition-all ${
+                    task.isCompleted
+                      ? 'bg-emerald-500 border-emerald-400 shadow-md shadow-emerald-500/50'
+                      : 'bg-[#12141d] border-purple-400'
+                  }`}
+                />
+
+                <div
+                  onClick={() => toggleTask(task.id)}
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
+                    task.isCompleted
+                      ? 'bg-emerald-500/5 border-emerald-500/20 text-slate-400'
+                      : 'bg-white/5 border-white/10 hover:border-purple-500/40 text-white'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    {task.isCompleted ? (
+                      <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+                    ) : (
+                      <Circle className="w-5 h-5 text-slate-500 shrink-0" />
+                    )}
+
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className={`text-sm font-bold ${task.isCompleted ? 'line-through' : ''}`}>
+                          {task.title}
+                        </h4>
+                        <Badge
+                          variant={
+                            task.priority === 'high' ? 'rose' : task.priority === 'medium' ? 'amber' : 'blue'
+                          }
+                          size="sm"
+                        >
+                          {task.priority}
+                        </Badge>
+                      </div>
+                      <span className="text-xs text-slate-400">{task.time} • {task.duration} • {task.category}</span>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Priority Kanban Board */}
+      {activeTab === 'kanban' && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {(['high', 'medium', 'low'] as const).map((prio) => {
+            const prioTasks = tasks.filter((t) => t.priority === prio);
+            return (
+              <div key={prio} className="glass-panel p-5 rounded-3xl border border-white/10 space-y-4">
+                <div className="flex items-center justify-between pb-2 border-b border-white/10">
+                  <span className="text-xs font-bold uppercase text-slate-300 tracking-wider">
+                    {prio} Priority
+                  </span>
+                  <Badge variant={prio === 'high' ? 'rose' : prio === 'medium' ? 'amber' : 'blue'}>
+                    {prioTasks.length} Tasks
+                  </Badge>
+                </div>
+
+                <div className="space-y-3">
+                  {prioTasks.map((t) => (
+                    <div
+                      key={t.id}
+                      onClick={() => toggleTask(t.id)}
+                      className="p-3.5 rounded-xl bg-white/5 border border-white/10 hover:border-purple-500/40 cursor-pointer space-y-2"
+                    >
+                      <h4 className={`text-xs font-bold text-white ${t.isCompleted ? 'line-through opacity-50' : ''}`}>
+                        {t.title}
+                      </h4>
+                      <span className="text-[10px] text-slate-400 block">{t.time} • {t.duration}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
