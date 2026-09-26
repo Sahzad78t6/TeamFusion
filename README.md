@@ -14,7 +14,7 @@ python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-Interactive API Documentation (Swagger): http://localhost:8000/docs
+
 Running Backend Tests
 cd backend
 python -m pytest app/tests
@@ -22,7 +22,7 @@ Running Frontend (React + TypeScript + Vite)
 cd frontend
 npm install
 npm run dev
-App running at http://localhost:3000 (or http://localhost:5173)
+
 Building Frontend for Production
 cd frontend
 npm run build
